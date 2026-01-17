@@ -1,75 +1,11 @@
 /* eslint-disable prettier/prettier */
-import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common"
-import { ConfigModule, ConfigService } from "@nestjs/config"
-import configuration from './config/configuration';
-import configSchema from './config/schema';
-import { LoggingMiddleware } from './common/middleware/logging.middleware';
-import { WinstonModule } from 'nest-winston';
-import { winstonLoggerOptions } from './common/logger/winston.logger';
-import { TypeOrmModule } from "@nestjs/typeorm"
+import { Module } from "@nestjs/common"
 import { AppController } from "./app.controller"
 import { AppService } from "./app.service"
-import { AuthModule } from "./auth/auth.module"
-import { UserModule } from "./user/user.module"
-import { RiskPoolModule } from "./risk-pool/risk-pool.module"
-import { PaymentModule } from "./payment/payment.module"
-import { MultiPaymentsModule } from "./multi-payments/multi-payments.module"
-import { NotificationModule } from "./notification/notification.module"
-import { PolicysModule } from "./policys/policys.module"
-import { ClaimModule } from "./claim/claim.module"
-import { GovernanceModule } from "./governance/governance.module"
-import { MailModule } from "./mail/mail.module"
-import { LpTokenModule } from './lp-token/lp-token.module';
-import { OracleModule } from './oracle/oracle.module';
-import { KycModule } from './kyc/kyc.module';
-import { FraudDetectionModule } from './fraud-detection/fraud-detection.module';
-import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
-  imports: [
-  WinstonModule.forRoot(winstonLoggerOptions),
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: [".env.development", ".env"],
-      load: [configuration],
-      validationSchema: configSchema,
-    }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: "postgres",
-        host: configService.get("DB_HOST", "localhost"),
-        port: configService.get("DB_PORT", 5432),
-        username: configService.get("DB_USERNAME", "postgres"),
-        password: configService.get("DB_PASSWORD", "postgres"),
-        database: configService.get("DB_NAME", "Strellar_insured"),
-        entities: [__dirname + "/**/*.entity{.ts,.js}"],
-        synchronize: configService.get("NODE_ENV", "development") !== "production",
-        autoLoadEntities: true,
-      }),
-      inject: [ConfigService],
-    }),
-    AuthModule,
-    UserModule,
-    RiskPoolModule,
-    PaymentModule,
-    MultiPaymentsModule,
-    NotificationModule,
-    PolicysModule,
-    ClaimModule,
-    GovernanceModule,
-    MailModule,
-    LpTokenModule,
-    OracleModule,
-    KycModule,
-    FraudDetectionModule,
-    ChatbotModule,
-  ],
+  imports: [],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggingMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}
