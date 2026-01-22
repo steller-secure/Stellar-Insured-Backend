@@ -1,32 +1,17 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from './config/config.module';
-import { DatabaseModule } from './common/database/database.module';
+import { ConfigModule } from '@nestjs/config';
 import { HealthModule } from './modules/health/health.module';
-import { NotificationModule } from './modules/notification/notification.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { PolicyModule } from './modules/policy/policy.module';
+import { PolicyModule } from './modules/policy/policy.module'; // Asegúrate de que esta ruta sea correcta
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UsersModule } from './modules/users/users.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, HealthModule, NotificationModule],
-  imports: [ConfigModule, HealthModule, AuthModule],
-
-  imports: [ConfigModule, HealthModule, PolicyModule],
   imports: [
-    ConfigModule,
+    ConfigModule.forRoot({ isGlobal: true }),
     HealthModule,
-    UsersModule,
     AuthModule,
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 10,
-      },
-    ]),
+    PolicyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

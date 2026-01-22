@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '../../config/config.module';
 import { AppConfigService } from '../../config/app-config.service';
 import { CacheModule } from '@nestjs/cache-manager';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -14,6 +15,11 @@ import { CacheModule } from '@nestjs/cache-manager';
     PassportModule,
     ConfigModule,
     CacheModule.register(),
+    // Agrega esta línea para que WalletThrottlerGuard encuentre sus opciones:
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: AppConfigService) => ({

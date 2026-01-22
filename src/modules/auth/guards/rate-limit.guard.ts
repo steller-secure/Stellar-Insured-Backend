@@ -2,7 +2,8 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
-  TooManyRequestsException,
+  HttpException,
+  HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { Request } from 'express';
@@ -80,8 +81,9 @@ export class RateLimitGuard implements CanActivate {
       this.logger.warn(
         `Rate limit exceeded for IP: ${clientIp} on endpoint: ${endpoint}`,
       );
-      throw new TooManyRequestsException(
-        `Too many requests. Please try again in ${remainingTime} seconds.`,
+      throw new HttpException(
+       `Too many requests. Please try again in ${remainingTime} seconds.`,
+       HttpStatus.TOO_MANY_REQUESTS
       );
     }
 
