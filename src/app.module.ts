@@ -1,20 +1,24 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule } from './config/config.module';
 import { AppConfigService } from './config/app-config.service';
 import { DatabaseModule } from './common/database/database.module';
 import { HealthModule } from './modules/health/health.module';
-import { NotificationModule } from './modules/notification/notification.module';
-import { AuthModule } from './modules/auth/auth.module';
+import { ClaimsModule } from './modules/claims/claims.module';
 import { PolicyModule } from './modules/policy/policy.module';
+import { DaoModule } from './modules/dao/dao.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     ConfigModule,
     DatabaseModule,
     ThrottlerModule.forRootAsync({
@@ -46,10 +50,12 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
       inject: [AppConfigService],
     }),
     HealthModule,
+    ClaimsModule,
+    PolicyModule,
+    DaoModule,
+    NotificationModule,
     UsersModule,
     AuthModule,
-    PolicyModule,
-    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
