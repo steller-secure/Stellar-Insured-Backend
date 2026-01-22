@@ -22,6 +22,9 @@ async function bootstrap(): Promise<void> {
   // Security middleware
   app.use(helmet());
 
+  // Set global prefix
+  app.setGlobalPrefix('api/v1');
+
   // Global validation pipe
   app.useGlobalPipes(AppValidationPipe);
 
