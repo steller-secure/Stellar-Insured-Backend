@@ -14,6 +14,8 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { FileModule } from './modules/file/file.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { AuditLogModule } from './common/audit-log/audit-log.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
@@ -62,6 +64,8 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
     AuthModule,
     FileModule,
     PaymentsModule,
+    QueueModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [

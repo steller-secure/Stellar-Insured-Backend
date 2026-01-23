@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HealthCheckResponse } from './health.interface';
+import { QueueService } from '../queue/queue.service';
 
 @Injectable()
 export class HealthService {
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private queueService: QueueService,
+  ) {}
 
   checkHealth(): HealthCheckResponse {
     return {
@@ -29,5 +33,24 @@ export class HealthService {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
     };
+  }
+
+  async checkQueues(): Promise<any> {
+    try {
+      const stats = await this.queueService.getQueueStats();
+      return {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        queues: {
+          'audit-logs': stats,
+        },
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      };
+    }
   }
 }
