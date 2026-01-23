@@ -1,11 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from '../../common/database/base.entity';
+import { User } from '../../modules/users/entities/user.entity';
 
 @Entity('dao_proposals')
-export class Proposal {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Proposal extends BaseEntity {
   @Column()
   title: string;
 
@@ -22,18 +20,12 @@ export class Proposal {
   status: 'draft' | 'active' | 'passed' | 'rejected' | 'executed';
 
   @Column({ nullable: true })
-  votingStartDate: Date;
+  votingStartDate?: Date | null;
 
   @Column({ nullable: true })
-  votingEndDate: Date;
+  votingEndDate?: Date | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'submitter_id' })
   submitter: User;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

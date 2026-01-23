@@ -1,12 +1,13 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import { BaseEntity } from '../../common/database/base.entity';
+import { User } from '../users/entities/user.entity';
 
 export enum NotificationType {
   CLAIM = 'claim',
@@ -16,15 +17,15 @@ export enum NotificationType {
 }
 
 @Entity('notifications')
-export class Notification {
-  @ApiProperty({ description: 'Unique identifier for the notification' })
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Notification extends BaseEntity {
   @ApiProperty({ description: 'User ID this notification belongs to' })
   @Index()
   @Column({ type: 'uuid' })
   userId: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @ApiProperty({
     description: 'Type of notification',
@@ -58,12 +59,4 @@ export class Notification {
   @Index()
   @Column({ type: 'boolean', default: false })
   isRead: boolean;
-
-  @ApiProperty({ description: 'When the notification was created' })
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @ApiProperty({ description: 'When the notification was last updated' })
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

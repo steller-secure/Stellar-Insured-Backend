@@ -23,7 +23,7 @@ import { WalletService } from '../services/wallet.service';
 import { RateLimitGuard } from '../guards/rate-limit.guard';
 import { Public } from '../../../common/decorators/public.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { UserRole } from '../entities/user.entity';
+import { UserRole } from '../../users/entities/user.entity';
 import {
   SignupRequestDto,
   SignupResponseDto,

@@ -1,6 +1,6 @@
 import { IsString, IsEmail, IsOptional, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { UserRole, SignupSource, UserStatus } from '../entities/user.entity';
+import { UserRole, SignupSource, UserStatus } from '../../users/entities/user.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**

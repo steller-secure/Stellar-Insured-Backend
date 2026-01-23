@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { PolicyStateMachineService } from './services/policy-state-machine.service';
 import { PolicyAuditService } from './services/policy-audit.service';
 import { PolicyController } from './policy.controller';
 import { PolicyService } from './policy.service';
+import { Policy } from './entities/policy.entity';
+import { PolicyStatusHistory } from './entities/policy-status-history.entity';
 
 @Module({
+  imports: [TypeOrmModule.forFeature([Policy, PolicyStatusHistory])],
   providers: [PolicyStateMachineService, PolicyAuditService, PolicyService],
   controllers: [PolicyController],
   exports: [PolicyStateMachineService, PolicyAuditService, PolicyService],

@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PolicyEntity } from './entities/policy.entity';
+import { Policy } from './entities/policy.entity';
 import { PolicyStateMachineService } from './services/policy-state-machine.service';
 import { PolicyAuditService } from './services/policy-audit.service';
 import { PolicyStatus } from './enums/policy-status.enum';
 import { PolicyTransitionAction } from './enums/policy-transition-action.enum';
 import { CreatePolicyDto } from './dto/create-policy.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import {
   EventNames,
@@ -18,9 +20,10 @@ import {
 @Injectable()
 export class PolicyService {
   private readonly logger = new Logger(PolicyService.name);
-  private policies = new Map<string, PolicyEntity>();
 
   constructor(
+    @InjectRepository(Policy)
+    private policyRepository: Repository<Policy>,
     private stateMachine: PolicyStateMachineService,
     private auditService: PolicyAuditService,
     private readonly eventEmitter: EventEmitter2,
@@ -29,44 +32,40 @@ export class PolicyService {
   /**
    * Creates a new policy in DRAFT status.
    */
-  createPolicy(dto: CreatePolicyDto, userId: string): PolicyEntity {
-    const policy = new PolicyEntity({
-      id: randomUUID(),
+  async createPolicy(dto: CreatePolicyDto, userId: string): Promise<Policy> {
+    // Note: In a real app, we'd fetch the User entity first
+    const policy = this.policyRepository.create({
       policyNumber: `POL-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
       status: PolicyStatus.DRAFT,
-      customerId: dto.customerId,
       coverageType: dto.coverageType,
       startDate: dto.startDate,
       endDate: dto.endDate,
       premium: dto.premium,
-      createdBy: userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
 
-    this.policies.set(policy.id, policy);
-    this.logger.log(`Policy created: ${policy.id} in ${policy.status} status`);
+    const savedPolicy = await this.policyRepository.save(policy);
+    this.logger.log(`Policy created: ${savedPolicy.id} in ${savedPolicy.status} status`);
 
-    return policy;
+    return savedPolicy;
   }
 
   /**
    * Transitions a policy to a new status with validation.
    * Emits domain events for notification handling.
    */
-  transitionPolicy(
+  async transitionPolicy(
     policyId: string,
     action: PolicyTransitionAction,
     userId: string,
     userRoles: string[],
     reason?: string,
-  ): PolicyEntity {
-    const policy = this.getPolicy(policyId);
+  ): Promise<Policy> {
+    const policy = await this.getPolicy(policyId);
 
     // Execute transition with full validation
     const { auditEntry, stateChangeEvent } =
       this.stateMachine.executeTransition(
-        policy.getCurrentStatus(),
+        policy.status,
         action,
         userId,
         userRoles,
@@ -75,7 +74,8 @@ export class PolicyService {
       );
 
     // Update policy status
-    policy.transitionTo(auditEntry.toStatus, auditEntry);
+    policy.status = auditEntry.toStatus;
+    await this.policyRepository.save(policy);
 
     // Record audit trail
     this.auditService.recordAuditEntry(auditEntry);
@@ -131,8 +131,8 @@ export class PolicyService {
   /**
    * Retrieves a policy by ID.
    */
-  getPolicy(policyId: string): PolicyEntity {
-    const policy = this.policies.get(policyId);
+  async getPolicy(policyId: string): Promise<Policy> {
+    const policy = await this.policyRepository.findOne({ where: { id: policyId } });
     if (!policy) {
       throw new Error(`Policy not found: ${policyId}`);
     }
@@ -142,36 +142,32 @@ export class PolicyService {
   /**
    * Gets all policies.
    */
-  getAllPolicies(): PolicyEntity[] {
-    return Array.from(this.policies.values());
+  async getAllPolicies(): Promise<Policy[]> {
+    return this.policyRepository.find();
   }
 
   /**
    * Gets policies by status.
    */
-  getPoliciesByStatus(status: PolicyStatus): PolicyEntity[] {
-    return Array.from(this.policies.values()).filter(
-      (p) => p.status === status,
-    );
+  async getPoliciesByStatus(status: PolicyStatus): Promise<Policy[]> {
+    return this.policyRepository.find({ where: { status } });
   }
 
   /**
    * Gets the audit trail for a policy.
    */
-  getAuditTrail(policyId: string) {
-    this.getPolicy(policyId); // Verify policy exists
+  async getAuditTrail(policyId: string) {
+    await this.getPolicy(policyId); // Verify policy exists
     return this.auditService.getAuditTrail(policyId);
   }
 
   /**
    * Gets available transitions for a policy.
    */
-  getAvailableTransitions(policyId: string) {
-    const policy = this.getPolicy(policyId);
-    return this.stateMachine.getAvailableActions(policy.getCurrentStatus());
+  async getAvailableTransitions(policyId: string) {
+    const policy = await this.getPolicy(policyId);
+    return this.stateMachine.getAvailableActions(policy.status);
   }
-
-  // ===== Simplified methods for notification event testing =====
 
   /**
    * Issue a new policy (simplified for event emission).

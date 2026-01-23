@@ -9,7 +9,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { UsersService, User } from '../users/users.service';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entity';
 import * as crypto from 'crypto';
 import { Keypair } from 'stellar-sdk';
 

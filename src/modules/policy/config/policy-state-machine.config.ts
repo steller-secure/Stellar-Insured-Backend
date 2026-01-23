@@ -10,7 +10,7 @@ export const POLICY_STATE_TRANSITIONS: PolicyTransition[] = [
   // DRAFT transitions
   {
     from: PolicyStatus.DRAFT,
-    to: PolicyStatus.PENDING_APPROVAL,
+    to: PolicyStatus.PENDING,
     action: PolicyTransitionAction.SUBMIT_FOR_APPROVAL,
     allowedRoles: ['creator', 'admin'],
     requiresReason: false,
@@ -23,35 +23,19 @@ export const POLICY_STATE_TRANSITIONS: PolicyTransition[] = [
     requiresReason: true,
   },
 
-  // PENDING_APPROVAL transitions
+  // PENDING transitions
   {
-    from: PolicyStatus.PENDING_APPROVAL,
-    to: PolicyStatus.APPROVED,
+    from: PolicyStatus.PENDING,
+    to: PolicyStatus.ACTIVE,
     action: PolicyTransitionAction.APPROVE,
     allowedRoles: ['approver', 'admin'],
     requiresReason: false,
   },
   {
-    from: PolicyStatus.PENDING_APPROVAL,
+    from: PolicyStatus.PENDING,
     to: PolicyStatus.DRAFT,
     action: PolicyTransitionAction.REJECT,
     allowedRoles: ['approver', 'admin'],
-    requiresReason: true,
-  },
-
-  // APPROVED transitions
-  {
-    from: PolicyStatus.APPROVED,
-    to: PolicyStatus.ACTIVE,
-    action: PolicyTransitionAction.ACTIVATE,
-    allowedRoles: ['admin', 'operator'],
-    requiresReason: false,
-  },
-  {
-    from: PolicyStatus.APPROVED,
-    to: PolicyStatus.CANCELLED,
-    action: PolicyTransitionAction.CANCEL,
-    allowedRoles: ['admin'],
     requiresReason: true,
   },
 
@@ -97,7 +81,7 @@ export const POLICY_STATE_TRANSITIONS: PolicyTransition[] = [
   // CANCELLED transitions
   {
     from: PolicyStatus.CANCELLED,
-    to: PolicyStatus.ARCHIVED,
+    to: PolicyStatus.LAPSED,
     action: PolicyTransitionAction.ARCHIVE,
     allowedRoles: ['admin'],
     requiresReason: false,
@@ -106,7 +90,7 @@ export const POLICY_STATE_TRANSITIONS: PolicyTransition[] = [
   // EXPIRED transitions
   {
     from: PolicyStatus.EXPIRED,
-    to: PolicyStatus.ARCHIVED,
+    to: PolicyStatus.LAPSED,
     action: PolicyTransitionAction.ARCHIVE,
     allowedRoles: ['admin'],
     requiresReason: false,
