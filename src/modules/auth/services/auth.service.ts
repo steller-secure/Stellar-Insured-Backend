@@ -59,15 +59,18 @@ export class AuthService {
     }
 
     // Normalize inputs
-    const normalizedWallet =
-      this.walletService.normalizeWalletAddress(signupDto.walletAddress);
+    const normalizedWallet = this.walletService.normalizeWalletAddress(
+      signupDto.walletAddress,
+    );
     const normalizedEmail = signupDto.email
       ? this.walletService.normalizeEmail(signupDto.email)
       : undefined;
 
     // Check if wallet already exists
     if (walletIndex.has(normalizedWallet)) {
-      this.logger.warn(`Signup attempt with existing wallet: ${normalizedWallet}`);
+      this.logger.warn(
+        `Signup attempt with existing wallet: ${normalizedWallet}`,
+      );
       throw new ConflictException(
         'This wallet address is already registered. Please use login instead.',
       );
@@ -75,7 +78,9 @@ export class AuthService {
 
     // Check if email already exists (if provided)
     if (normalizedEmail && emailIndex.has(normalizedEmail)) {
-      this.logger.warn(`Signup attempt with existing email: ${normalizedEmail}`);
+      this.logger.warn(
+        `Signup attempt with existing email: ${normalizedEmail}`,
+      );
       throw new ConflictException(
         'This email address is already registered with another account.',
       );
@@ -85,7 +90,8 @@ export class AuthService {
     const newUser = new User();
     newUser.walletAddress = normalizedWallet;
     newUser.email = normalizedEmail;
-    newUser.displayName = signupDto.displayName || normalizedWallet.substring(0, 8);
+    newUser.displayName =
+      signupDto.displayName || normalizedWallet.substring(0, 8);
     newUser.role = UserRole.USER;
     newUser.status = UserStatus.ACTIVE;
     newUser.isWalletVerified = true; // Mark as verified during signup
@@ -96,9 +102,7 @@ export class AuthService {
       const referrerId = referralCodeIndex.get(signupDto.referralCode);
       if (referrerId) {
         newUser.referrerId = referrerId;
-        this.logger.log(
-          `User ${newUser.id} referred by ${referrerId}`,
-        );
+        this.logger.log(`User ${newUser.id} referred by ${referrerId}`);
         // TODO: Implement referral rewards system
       } else {
         this.logger.warn(

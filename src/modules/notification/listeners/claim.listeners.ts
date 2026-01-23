@@ -17,7 +17,7 @@ import {
 export class ClaimEventListeners {
   private readonly logger = new Logger(ClaimEventListeners.name);
 
-  constructor(private readonly notificationService: NotificationService) { }
+  constructor(private readonly notificationService: NotificationService) {}
 
   @OnEvent(EventNames.CLAIM_SUBMITTED)
   handleClaimSubmitted(event: ClaimSubmittedEvent): void {

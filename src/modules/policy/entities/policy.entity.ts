@@ -46,10 +46,7 @@ export class PolicyEntity {
   /**
    * Update the policy status and record the transition
    */
-  transitionTo(
-    newStatus: PolicyStatus,
-    auditEntry: PolicyAuditEntry,
-  ): void {
+  transitionTo(newStatus: PolicyStatus, auditEntry: PolicyAuditEntry): void {
     this.status = newStatus;
     this.addAuditEntry(auditEntry);
     this.updatedAt = new Date();

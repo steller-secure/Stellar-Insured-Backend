@@ -1,14 +1,13 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginChallengeDto } from './dtos/login-challenge.dto';
 import { LoginDto } from './dtos/login.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiTooManyRequestsResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiTooManyRequestsResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Authentication')

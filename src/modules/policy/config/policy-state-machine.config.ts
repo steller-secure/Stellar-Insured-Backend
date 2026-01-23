@@ -121,8 +121,8 @@ export const POLICY_STATE_TRANSITIONS_MAP: Map<
   PolicyStatus,
   PolicyTransition[]
 > = new Map(
-  Object.values(PolicyStatus).map((status) => [
+  Object.values(PolicyStatus).map(status => [
     status,
-    POLICY_STATE_TRANSITIONS.filter((t) => t.from === status),
+    POLICY_STATE_TRANSITIONS.filter(t => t.from === status),
   ]),
 );

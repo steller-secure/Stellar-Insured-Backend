@@ -1,4 +1,11 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { DomainError } from '../errors/domain.error';
 
@@ -16,7 +23,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let code = 'INTERNAL_SERVER_ERROR';
     let details = null;
 
-    
     if (exception instanceof DomainError) {
       message = exception.message;
       code = exception.code;
@@ -25,19 +31,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       if (code === 'ENTITY_NOT_FOUND') status = HttpStatus.NOT_FOUND;
       if (code === 'VALIDATION_FAILED') status = HttpStatus.BAD_REQUEST;
       if (code === 'UNAUTHORIZED_ACCESS') status = HttpStatus.UNAUTHORIZED;
-    } 
-    
-    else if (exception instanceof HttpException) {
+    } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       const res = exception.getResponse() as any;
       message = res.message || res;
       code = 'HTTP_EXCEPTION';
     }
 
-    
-    this.logger.error(`[${code}] ${request.method} ${request.url}`, exception.stack);
+    this.logger.error(
+      `[${code}] ${request.method} ${request.url}`,
+      exception.stack,
+    );
 
-    
     response.status(status).json({
       success: false,
       error: {

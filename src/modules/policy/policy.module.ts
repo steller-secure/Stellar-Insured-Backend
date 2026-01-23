@@ -9,4 +9,4 @@ import { PolicyService } from './policy.service';
   controllers: [PolicyController],
   exports: [PolicyStateMachineService, PolicyAuditService, PolicyService],
 })
-export class PolicyModule { }
+export class PolicyModule {}

@@ -14,7 +14,9 @@ export class UsersService {
   private users: User[] = [];
 
   findByWalletAddress(walletAddress: string): Promise<User | undefined> {
-    return Promise.resolve(this.users.find((u) => u.walletAddress === walletAddress));
+    return Promise.resolve(
+      this.users.find(u => u.walletAddress === walletAddress),
+    );
   }
 
   create(walletAddress: string): Promise<User> {
@@ -28,7 +30,7 @@ export class UsersService {
   }
 
   updateLastLogin(id: string): Promise<void> {
-    const user = this.users.find((u) => u.id === id);
+    const user = this.users.find(u => u.id === id);
     if (user) {
       user.lastLoginAt = new Date();
     }

@@ -15,10 +15,12 @@ import { ThrottlerModule } from '@nestjs/throttler';
     PassportModule,
     ConfigModule,
     CacheModule.register(),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 10,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 10,
+      },
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: AppConfigService) => ({
