@@ -18,70 +18,11 @@ import { QueueModule } from './modules/queue/queue.module';
 import { AuditLogModule } from './common/audit-log/audit-log.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
-import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
-import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { FilesController } from './modules/files/files.controller';
 
 @Module({
-  imports: [
-    EventEmitterModule.forRoot(),
-    ConfigModule,
-    DatabaseModule,
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: AppConfigService) => ({
-        throttlers: [
-          {
-            name: 'default',
-            ttl: configService.throttleDefaultTtl,
-            limit: configService.throttleDefaultLimit,
-          },
-          {
-            name: 'auth',
-            ttl: configService.throttleAuthTtl,
-            limit: configService.throttleAuthLimit,
-          },
-          {
-            name: 'public',
-            ttl: configService.throttlePublicTtl,
-            limit: configService.throttlePublicLimit,
-          },
-          {
-            name: 'admin',
-            ttl: configService.throttleAdminTtl,
-            limit: configService.throttleAdminLimit,
-          },
-        ],
-      }),
-      inject: [AppConfigService],
-    }),
-    HealthModule,
-    ClaimsModule,
-    PolicyModule,
-    DaoModule,
-    NotificationModule,
-    UsersModule,
-    AuthModule,
-    FileModule,
-    PaymentsModule,
-    QueueModule,
-    AuditLogModule,
-  ],
-  controllers: [AppController],
-  providers: [
-    AppService,
-    {
-      provide: APP_GUARD,
-      useClass: CustomThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
-  ],
+  imports: [ConfigModule, HealthModule],
+  controllers: [AppController, FilesController],
+  providers: [AppService],
 })
 export class AppModule { }
