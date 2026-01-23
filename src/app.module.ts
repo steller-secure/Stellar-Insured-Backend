@@ -13,6 +13,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { FileModule } from './modules/file/file.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
@@ -60,6 +61,7 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
     UsersModule,
     AuthModule,
     FileModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -8,7 +8,7 @@ export class FileService {
      * This provides a foundation for future enhancements like validation,
      * cloud storage integration, or file processing.
      */
-    processUpload(file: Express.Multer.File): UploadResponseDto {
+    processUpload(file: any): UploadResponseDto {
         return {
             filename: file.filename,
             originalname: file.originalname,

@@ -1,0 +1,13 @@
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+}
+
+export enum PaymentType {
+  PREMIUM = 'PREMIUM',
+  CLAIM_PAYOUT = 'CLAIM_PAYOUT',
+  REFUND = 'REFUND',
+}

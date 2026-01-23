@@ -1,13 +1,16 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Proposal } from '../entities/proposal.entity';
 import { CreateProposalDto } from '../dto/create-proposal.dto';
-import { User } from '../../users/entities/user.entity';
+import { User, UserRole } from '../../modules/users/entities/user.entity';
 
 @Injectable()
 export class ProposalService {
   constructor(
+    @InjectRepository(Proposal)
     private proposalRepository: Repository<Proposal>,
+    @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
 
@@ -40,20 +43,18 @@ export class ProposalService {
     }
 
     // Create proposal entity
-    const proposal = this.proposalRepository.create({
-      title: createProposalDto.title.trim(),
-      description: createProposalDto.description.trim(),
-      metadata: createProposalDto.metadata || {},
-      submitterWalletAddress: createProposalDto.submitterWalletAddress,
-      submitter: user,
-      status: 'draft',
-      votingStartDate: createProposalDto.votingStartDate ? new Date(createProposalDto.votingStartDate) : null,
-      votingEndDate: createProposalDto.votingEndDate ? new Date(createProposalDto.votingEndDate) : null,
-    });
+    const proposal = new Proposal();
+    proposal.title = createProposalDto.title.trim();
+    proposal.description = createProposalDto.description.trim();
+    proposal.metadata = createProposalDto.metadata || {};
+    proposal.submitterWalletAddress = createProposalDto.submitterWalletAddress;
+    proposal.submitter = user;
+    proposal.status = 'draft';
+    proposal.votingStartDate = createProposalDto.votingStartDate ? new Date(createProposalDto.votingStartDate) : null;
+    proposal.votingEndDate = createProposalDto.votingEndDate ? new Date(createProposalDto.votingEndDate) : null;
 
     // Persist to database
-    const savedProposal = await this.proposalRepository.save(proposal);
-    return savedProposal;
+    return this.proposalRepository.save(proposal);
   }
 
   async getProposalById(proposalId: string): Promise<Proposal> {
@@ -93,12 +94,10 @@ export class ProposalService {
   }
 
   private isDAOMember(user: User): boolean {
-    // Implement your DAO member verification logic here
-    // This could check: user roles, wallet balance, token holdings, etc.
-    return user && (user as any).roles && (user as any).roles.includes('DAO_MEMBER');
+    return user && user.roles && user.roles.includes(UserRole.DAO);
   }
 
   private isAdmin(user: User): boolean {
-    return user && (user as any).roles && (user as any).roles.includes('ADMIN');
+    return user && user.roles && user.roles.includes(UserRole.ADMIN);
   }
 }

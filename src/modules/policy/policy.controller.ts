@@ -61,12 +61,12 @@ export class PolicyController {
   ) {
     // TODO: Extract userId and userRole from request context
     const userId = 'user-123';
-    const userRole = 'admin';
+    const userRoles = ['admin'];
     return this.policyService.transitionPolicy(
       id,
       dto.action,
       userId,
-      userRole,
+      userRoles,
       dto.reason,
     );
   }

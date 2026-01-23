@@ -11,10 +11,10 @@ import {
   UserRole,
   UserStatus,
   SignupSource,
-  UserPreference,
-  UserPortfolio,
-  UserOnboardingChecklist,
-} from '../entities/user.entity';
+} from '../../users/entities/user.entity';
+import { UserPreference } from '../../users/entities/user-preference.entity';
+import { UserPortfolio } from '../../users/entities/user-portfolio.entity';
+import { UserOnboardingChecklist } from '../../users/entities/user-onboarding-checklist.entity';
 import {
   SignupRequestDto,
   SignupResponseDto,
@@ -120,17 +120,17 @@ export class AuthService {
 
     // Create user preferences
     const userPreference = new UserPreference();
-    userPreference.userId = newUser.id;
+    userPreference.user = newUser;
     // TODO: Store in database
 
     // Create user portfolio
     const portfolio = new UserPortfolio();
-    portfolio.userId = newUser.id;
+    portfolio.user = newUser;
     // TODO: Store in database
 
     // Create onboarding checklist
     const checklist = new UserOnboardingChecklist();
-    checklist.userId = newUser.id;
+    checklist.user = newUser;
     checklist.walletVerified = true; // Wallet verified at signup
     if (normalizedEmail) {
       checklist.emailVerified = false;

@@ -47,7 +47,7 @@ export class FileController {
         description: 'No file provided or invalid file',
     })
     @UseInterceptors(FileInterceptor('file'))
-    upload(@UploadedFile() file: Express.Multer.File): UploadResponseDto {
+    upload(@UploadedFile() file: any): UploadResponseDto {
         if (!file) {
             throw new BadRequestException('No file provided');
         }
