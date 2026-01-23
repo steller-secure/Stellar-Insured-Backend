@@ -8,11 +8,13 @@ import { ConfigModule } from '../../config/config.module';
 import { AppConfigService } from '../../config/app-config.service';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { WalletService } from './services/wallet.service';
 
 @Module({
   imports: [
     UsersModule,
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     ConfigModule,
     CacheModule.register(),
     
@@ -29,8 +31,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
       inject: [AppConfigService],
     }),
   ],
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy, WalletService],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, JwtStrategy, PassportModule],
 })
 export class AuthModule {}

@@ -10,12 +10,14 @@ import { LoginChallengeDto } from './dto/login-challenge.dto';
 import { LoginDto } from './dto/login.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiTooManyRequestsResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login/challenge')
   @ApiOperation({ summary: 'Request a login challenge' })
   @ApiResponse({ status: 200, description: 'Challenge generated' })
@@ -28,6 +30,7 @@ export class AuthController {
     return this.authService.generateChallenge(dto.walletAddress);
   }
 
+  @Public()
   @Post('login')
   @ApiOperation({ summary: 'Submit login signature' })
   @ApiResponse({ status: 200, description: 'Login successful, JWT issued' })

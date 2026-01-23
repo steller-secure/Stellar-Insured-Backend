@@ -86,7 +86,7 @@ export class AuthService {
     newUser.walletAddress = normalizedWallet;
     newUser.email = normalizedEmail;
     newUser.displayName = signupDto.displayName || normalizedWallet.substring(0, 8);
-    newUser.role = UserRole.USER;
+    newUser.roles = [UserRole.USER];
     newUser.status = UserStatus.ACTIVE;
     newUser.isWalletVerified = true; // Mark as verified during signup
     newUser.signupSource = signupDto.signupSource || SignupSource.ORGANIC;
@@ -228,7 +228,7 @@ export class AuthService {
         const newUser = new User();
         newUser.walletAddress =
           this.walletService.normalizeWalletAddress(walletAddress);
-        newUser.role = UserRole.USER;
+        newUser.roles = [UserRole.USER];
         newUser.status = UserStatus.ACTIVE;
         newUser.isWalletVerified = true;
         newUser.signupSource = SignupSource.BULK_IMPORT;
@@ -346,7 +346,7 @@ export class AuthService {
       walletAddress: user.walletAddress,
       email: user.email,
       displayName: user.displayName,
-      role: user.role,
+      roles: user.roles,
       status: user.status,
       createdAt: user.createdAt,
       message: 'User account created successfully',

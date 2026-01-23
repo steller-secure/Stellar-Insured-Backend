@@ -21,6 +21,9 @@ import {
 import { AuthService } from '../services/auth.service';
 import { WalletService } from '../services/wallet.service';
 import { RateLimitGuard } from '../guards/rate-limit.guard';
+import { Public } from '../../../common/decorators/public.decorator';
+import { Roles } from '../../../common/decorators/roles.decorator';
+import { UserRole } from '../entities/user.entity';
 import {
   SignupRequestDto,
   SignupResponseDto,
@@ -61,6 +64,7 @@ export class AuthController {
    * 8. Send welcome email (if email provided)
    * 9. Return success response with user details
    */
+  @Public()
   @Post('signup')
   @UseGuards(RateLimitGuard)
   @HttpCode(HttpStatus.CREATED)
@@ -207,7 +211,7 @@ export class AuthController {
       walletAddress: this.walletService.maskWalletAddress(user.walletAddress),
       email: user.email,
       displayName: user.displayName,
-      role: user.role,
+      roles: user.roles,
       status: user.status,
       isEmailVerified: user.isEmailVerified,
       isWalletVerified: user.isWalletVerified,
@@ -263,6 +267,7 @@ export class AuthController {
    * 4. Track import source and campaign
    * 5. Return summary with success and failure counts
    */
+  @Roles(UserRole.ADMIN)
   @Post('bulk-import')
   @HttpCode(HttpStatus.CREATED)
   @ApiCreatedResponse({
@@ -308,6 +313,7 @@ export class AuthController {
    *
    * HTTP GET /auth/check-wallet/:walletAddress
    */
+  @Public()
   @Get('check-wallet/:walletAddress')
   @ApiOperation({
     summary: 'Check if wallet address is available for registration',
@@ -355,6 +361,7 @@ export class AuthController {
    *
    * HTTP GET /auth/check-email/:email
    */
+  @Public()
   @Get('check-email/:email')
   @ApiOperation({
     summary: 'Check if email address is available for registration',

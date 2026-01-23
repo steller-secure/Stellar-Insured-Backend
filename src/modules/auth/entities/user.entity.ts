@@ -5,9 +5,9 @@ import { randomUUID } from 'node:crypto';
  */
 export enum UserRole {
   USER = 'USER',
+  ORACLE = 'ORACLE',
+  DAO = 'DAO',
   ADMIN = 'ADMIN',
-  MODERATOR = 'MODERATOR',
-  DAO_MEMBER = 'DAO_MEMBER',
 }
 
 /**
@@ -59,10 +59,10 @@ export class User {
   displayName?: string;
 
   /**
-   * User role in the system
-   * @default UserRole.USER
+   * User roles in the system
+   * @default [UserRole.USER]
    */
-  role: UserRole = UserRole.USER;
+  roles: UserRole[] = [UserRole.USER];
 
   /**
    * User account status

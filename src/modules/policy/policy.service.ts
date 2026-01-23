@@ -58,7 +58,7 @@ export class PolicyService {
     policyId: string,
     action: PolicyTransitionAction,
     userId: string,
-    userRole: string,
+    userRoles: string[],
     reason?: string,
   ): PolicyEntity {
     const policy = this.getPolicy(policyId);
@@ -69,7 +69,7 @@ export class PolicyService {
         policy.getCurrentStatus(),
         action,
         userId,
-        userRole,
+        userRoles,
         policyId,
         reason,
       );

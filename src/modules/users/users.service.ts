@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { UserRole } from '../auth/entities/user.entity';
 
 export interface User {
   id: string;
   walletAddress: string;
   email?: string;
-  roles: string[];
+  roles: UserRole[];
   lastLoginAt?: Date;
 }
 
@@ -21,7 +22,7 @@ export class UsersService {
     const newUser: User = {
       id: crypto.randomUUID(),
       walletAddress,
-      roles: ['USER'],
+      roles: [UserRole.USER],
     };
     this.users.push(newUser);
     return Promise.resolve(newUser);

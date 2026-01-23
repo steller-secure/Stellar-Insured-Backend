@@ -134,14 +134,15 @@ export class SignupResponseDto {
   displayName?: string;
 
   /**
-   * User role
+   * User roles
    */
   @ApiProperty({
-    description: 'User role in system',
+    description: 'User roles in system',
     enum: UserRole,
-    example: UserRole.USER,
+    isArray: true,
+    example: [UserRole.USER],
   })
-  role: UserRole;
+  roles: UserRole[];
 
   /**
    * Account status
