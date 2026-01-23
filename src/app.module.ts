@@ -25,4 +25,4 @@ import { FilesController } from './modules/files/files.controller';
   controllers: [AppController, FilesController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

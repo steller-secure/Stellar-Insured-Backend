@@ -18,6 +18,10 @@ export class UsersService {
     return this.userRepository.findOne({ where: { id } });
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { email } });
+  }
+
   async create(walletAddress: string): Promise<User> {
     const newUser = this.userRepository.create({
       walletAddress,
@@ -28,5 +32,10 @@ export class UsersService {
 
   async updateLastLogin(id: string): Promise<void> {
     await this.userRepository.update(id, { lastLoginAt: new Date() });
+  }
+
+  async update(userId: string, data: Partial<User>): Promise<User | null> {
+    await this.userRepository.update(userId, data);
+    return this.findById(userId);
   }
 }

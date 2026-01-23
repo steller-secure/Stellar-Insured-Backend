@@ -3,6 +3,8 @@ import { BaseEntity } from '../../../common/database/base.entity';
 import { Policy } from '../../policy/entities/policy.entity';
 import { Claim } from '../../claims/entities/claim.entity';
 import { Payment } from '../../payments/entities/payment.entity';
+import type { Vote } from '../../dao/entities/vote.entity';
+import type { Proposal } from '../../dao/entities/proposal.entity';
 
 export enum UserRole {
   USER = 'USER',
@@ -94,4 +96,10 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Payment, (payment) => payment.user)
   payments: Payment[];
+
+  @OneToMany('Vote', 'user')
+  votes: Vote[];
+
+  @OneToMany('Proposal', 'createdBy')
+  proposals: Proposal[];
 }

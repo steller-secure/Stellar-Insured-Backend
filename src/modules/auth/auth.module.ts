@@ -17,7 +17,7 @@ import { WalletService } from './services/wallet.service';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     ConfigModule,
     CacheModule.register(),
-    
+
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 10,
