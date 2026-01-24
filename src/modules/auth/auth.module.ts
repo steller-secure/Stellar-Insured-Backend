@@ -10,6 +10,11 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { WalletService } from './services/wallet.service';
+import { PermissionService } from 'src/permissions/permission.service';
+import { PermissionGuard } from 'src/permissions/permission.guard';
+
+// 🔹 New imports for permissions
+
 
 @Module({
   imports: [
@@ -32,8 +37,23 @@ import { WalletService } from './services/wallet.service';
       inject: [AppConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, WalletService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    WalletService,
+
+    // 🔹 Add permission service and guard here
+    PermissionService,
+    PermissionGuard,
+  ],
   controllers: [AuthController],
-  exports: [AuthService, JwtStrategy, PassportModule],
+  exports: [
+    AuthService,
+    JwtStrategy,
+    PassportModule,
+
+    // 🔹 Export PermissionService so it can be injected in other modules if needed
+    PermissionService,
+  ],
 })
 export class AuthModule {}
