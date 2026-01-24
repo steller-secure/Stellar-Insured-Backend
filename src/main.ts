@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { AppValidationPipe } from './common/pipes/validation.pipe';
-import { QueueService } from './modules/queue/queue.service';
 import helmet from 'helmet';
 
 async function bootstrap(): Promise<void> {
@@ -12,7 +11,6 @@ async function bootstrap(): Promise<void> {
 
   // Get configuration service
   const configService = app.get(ConfigService);
-  const queueService = app.get(QueueService);
 
   // Enable CORS
   const corsOrigin = configService.get<string>('CORS_ORIGIN');
@@ -33,23 +31,9 @@ async function bootstrap(): Promise<void> {
   // Global exception filter
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // Enable shutdown hooks
+  // FIXED: Enable shutdown hooks. 
+  // This allows Nest to trigger onModuleDestroy() inside your QueueService automatically.
   app.enableShutdownHooks();
-
-  // Register graceful shutdown handler for queues
-  app.onModuleDestroy(async () => {
-    try {
-      await queueService.drainQueues();
-      await queueService.closeQueues();
-      /* eslint-disable no-console */
-      console.log('Queues gracefully shut down');
-      /* eslint-enable no-console */
-    } catch (error) {
-      /* eslint-disable no-console */
-      console.error('Error during queue shutdown:', error);
-      /* eslint-enable no-console */
-    }
-  });
 
   // Swagger setup
   if (configService.get<boolean>('SWAGGER_ENABLED', true)) {

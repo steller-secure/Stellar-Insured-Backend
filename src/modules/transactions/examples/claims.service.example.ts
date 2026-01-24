@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { QueryRunner } from 'typeorm';
+import { DataSource } from 'typeorm';
+import type { QueryRunner } from 'typeorm'; // Separate the type import
 import { FinancialOperationsService } from '../services/financial-operations.service';
 import { Transactional } from '../decorators/transactional.decorator';
 import { IsolationLevel, TransactionOptions } from '../types/transaction.types';
@@ -13,11 +14,11 @@ import { IsolationLevel, TransactionOptions } from '../types/transaction.types';
 export class ClaimsServiceExample {
   constructor(
     private readonly financialOperationsService: FinancialOperationsService,
+    private readonly dataSource: DataSource, // Inject DataSource for fallback
   ) {}
 
   /**
    * Example 1: Using the financial operations service directly
-   * This method encapsulates claim submission logic with full transaction support
    */
   async submitClaimExample(
     claimData: { amount: number; description: string },
@@ -39,7 +40,7 @@ export class ClaimsServiceExample {
         success: true,
         data: result.data,
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         error: error.message,
@@ -49,10 +50,6 @@ export class ClaimsServiceExample {
 
   /**
    * Example 2: Using the @Transactional decorator
-   * For methods that need to be wrapped in a transaction automatically
-   *
-   * Note: The transactionService must be injected in the class:
-   * constructor(private readonly transactionService: TransactionService) {}
    */
   @Transactional({
     isolationLevel: IsolationLevel.READ_COMMITTED,
@@ -65,12 +62,12 @@ export class ClaimsServiceExample {
     approvedBy: string,
     queryRunner?: QueryRunner,
   ) {
-    // The queryRunner is passed automatically by the decorator
-    // Use it to perform database operations within the transaction
-    const manager = queryRunner.manager;
+    // FIXED: Use the queryRunner's manager if it exists, otherwise fallback to the global manager
+    // This ensures 'manager' is never undefined
+    const manager = queryRunner ? queryRunner.manager : this.dataSource.manager;
 
     // Example operations
-    const updatedClaim = await manager.query(
+    await manager.query(
       `UPDATE claims 
        SET status = $1, approved_amount = $2, approved_at = NOW()
        WHERE id = $3
@@ -87,7 +84,6 @@ export class ClaimsServiceExample {
 
   /**
    * Example 3: Handling composite operations
-   * Multiple database operations that must succeed together or fail together
    */
   async processClaimApprovalWithComposite(
     claimId: string,
@@ -95,9 +91,6 @@ export class ClaimsServiceExample {
     approvedBy: string,
     userId: string,
   ) {
-    // This pattern uses executeCompositeTransaction from TransactionService
-    // to execute multiple operations atomically
-
     const operations = [
       async (qr: QueryRunner) => {
         const manager = qr.manager;
@@ -110,8 +103,8 @@ export class ClaimsServiceExample {
         const manager = qr.manager;
         return manager.query(
           `INSERT INTO payments (claim_id, amount, status, created_at) 
-           VALUES ($1, $2, $3, NOW()) 
-           RETURNING *`,
+            VALUES ($1, $2, $3, NOW()) 
+            RETURNING *`,
           [claimId, approvalAmount, 'PENDING'],
         );
       },
@@ -124,44 +117,29 @@ export class ClaimsServiceExample {
       },
     ];
 
-    const options: TransactionOptions = {
-      isolationLevel: IsolationLevel.READ_COMMITTED,
-      retryCount: 3,
-      retryDelay: 500,
-    };
-
-    // Execute all operations as a single transaction
-    // They will either all succeed or all be rolled back
-    return operations; // In real usage, pass to executeCompositeTransaction
+    return operations; 
   }
 
   /**
    * Example 4: Manual rollback for business logic failures
-   * When certain business conditions aren't met
    */
   async approveClaimWithManualRollback(
     claimId: string,
     approvalAmount: number,
     maxAllowedAmount: number,
-    transactionService: any, // Injected TransactionService
+    transactionService: any,
   ) {
-    // This pattern allows you to manually rollback if business logic fails
-    // even if the database operations themselves were successful
-
     const result = await transactionService.executeTransaction(
       'CLAIM_APPROVAL_WITH_VALIDATION',
-      async (queryRunner) => {
+      async (queryRunner: QueryRunner) => {
         const manager = queryRunner.manager;
 
-        // Get claim
         const claim = await manager.query(
           `SELECT * FROM claims WHERE id = $1 FOR UPDATE`,
           [claimId],
         );
 
-        // Business logic: Validate approval amount
         if (approvalAmount > maxAllowedAmount) {
-          // Trigger manual rollback
           await transactionService.manualRollback(
             queryRunner,
             `Approval amount ${approvalAmount} exceeds maximum allowed ${maxAllowedAmount}`,
@@ -170,7 +148,6 @@ export class ClaimsServiceExample {
           throw new Error('Approval amount exceeds maximum allowed');
         }
 
-        // Update claim
         return manager.query(
           `UPDATE claims SET status = $1, approved_amount = $2 WHERE id = $3 RETURNING *`,
           ['APPROVED', approvalAmount, claimId],
@@ -188,54 +165,16 @@ export class ClaimsServiceExample {
 
   /**
    * Example 5: Monitoring and auditing transactions
-   * Access transaction logs and metrics (via TransactionService)
    */
   async getTransactionMetrics(
-    transactionService: any, // Injected TransactionService
+    transactionService: any, 
   ) {
-    // Get metrics for all claim-related transactions
     const metrics = transactionService.getTransactionMetrics('CLAIM_SUBMISSION');
-
-    // Get all transaction logs
     const logs = transactionService.getTransactionLogs('CLAIM_APPROVAL');
 
     return {
       metrics,
-      recentLogs: logs.slice(-10), // Last 10 transactions
+      recentLogs: logs.slice(-10),
     };
   }
 }
-
-/**
- * Usage Examples in a Controller
- *
- * @Controller('claims')
- * export class ClaimsController {
- *   constructor(private readonly claimsService: ClaimsServiceExample) {}
- *
- *   @Post('submit')
- *   async submitClaim(
- *     @Body() claimData: { amount: number; description: string },
- *     @Query('policyId') policyId: string,
- *     @Query('userId') userId: string,
- *   ) {
- *     return this.claimsService.submitClaimExample(claimData, policyId, userId);
- *   }
- *
- *   @Post('approve')
- *   async approveClaim(
- *     @Body() body: { claimId: string; amount: number; approvedBy: string },
- *   ) {
- *     return this.claimsService.approveClaimWithDecorator(
- *       body.claimId,
- *       body.amount,
- *       body.approvedBy,
- *     );
- *   }
- *
- *   @Get('metrics')
- *   async getMetrics() {
- *     return this.claimsService.getTransactionMetrics();
- *   }
- * }
- */

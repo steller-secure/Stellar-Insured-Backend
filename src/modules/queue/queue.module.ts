@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule } from '../../config/config.module'; // Adjusted to match your previous app.module imports
 import { AppConfigService } from '../../config/app-config.service';
 import { QueueService } from './queue.service';
 import { QueueController } from './queue.controller';
@@ -13,16 +13,17 @@ import { GlobalQueueErrorHandler } from './global-queue-error.handler';
       imports: [ConfigModule],
       useFactory: (configService: AppConfigService) => ({
         redis: {
-          host: configService.get<string>('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
-          password: configService.getOptional<string>('REDIS_PASSWORD'),
-          db: configService.get<number>('REDIS_DB', 0),
+          // Removed the <type> generics to fix the TS2558 errors
+          host: configService.get('REDIS_HOST') || 'localhost',
+          port: configService.get('REDIS_PORT') || 6379,
+          password: configService.get('REDIS_PASSWORD'),
+          db: configService.get('REDIS_DB') || 0,
         },
         defaultJobOptions: {
-          attempts: configService.get<number>('QUEUE_JOB_ATTEMPTS', 3),
+          attempts: configService.get('QUEUE_JOB_ATTEMPTS') || 3,
           backoff: {
             type: 'exponential',
-            delay: configService.get<number>('QUEUE_JOB_BACKOFF_DELAY', 2000),
+            delay: configService.get('QUEUE_JOB_BACKOFF_DELAY') || 2000,
           },
           removeOnComplete: true,
           removeOnFail: false,

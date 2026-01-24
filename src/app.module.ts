@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 import { ConfigModule } from './config/config.module';
 import { AppConfigService } from './config/app-config.service';
 import { DatabaseModule } from './common/database/database.module';
@@ -26,6 +28,18 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
   imports: [
     EventEmitterModule.forRoot(),
     ConfigModule,
+    // Redis-backed Cache Implementation
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      useFactory: async (configService: AppConfigService) => ({
+        store: await redisStore({
+          url: 'redis://localhost:6379',
+          ttl: 60000, // 60 seconds default TTL
+        }),
+      }),
+      inject: [AppConfigService],
+    }),
     DatabaseModule,
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],

@@ -1,13 +1,28 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import type { Queue } from 'bull';
 import { AuditLogJobData } from './interfaces/audit-log-job.interface';
 
 @Injectable()
-export class QueueService {
+export class QueueService implements OnModuleDestroy {
   constructor(
     @InjectQueue('audit-logs') private auditLogsQueue: Queue,
   ) {}
+
+  /**
+   * Automatically triggered by NestJS shutdown hooks
+   */
+  async onModuleDestroy() {
+    /* eslint-disable no-console */
+    console.log('Initiating graceful shutdown of queues...');
+    try {
+      await this.closeQueues();
+      console.log('Queues gracefully shut down');
+    } catch (error) {
+      console.error('Error during queue shutdown:', error);
+    }
+    /* eslint-enable no-console */
+  }
 
   /**
    * Add an audit log job to the queue
@@ -39,10 +54,11 @@ export class QueueService {
   }
 
   /**
-   * Drain all queues
+   * Empty all waiting jobs from the queue
+   * FIXED: Bull uses .empty() instead of .drain()
    */
   async drainQueues(): Promise<void> {
-    await this.auditLogsQueue.drain();
+    await this.auditLogsQueue.empty();
   }
 
   /**

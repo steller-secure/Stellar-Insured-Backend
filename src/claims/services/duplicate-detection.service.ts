@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan, IsNull } from 'typeorm';
 import { Claim } from '../entities/claim.entity';
 import { DuplicateClaimCheck } from '../entities/duplicate-claim-check.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,13 +9,14 @@ export class DuplicateDetectionService {
   private readonly logger = new Logger(DuplicateDetectionService.name);
 
   constructor(
+    @InjectRepository(Claim)
     private claimRepository: Repository<Claim>,
+    @InjectRepository(DuplicateClaimCheck)
     private duplicateCheckRepository: Repository<DuplicateClaimCheck>,
   ) {}
 
   /**
    * Detects duplicate claims based on multiple criteria
-   * Returns null if no duplicates found, or the duplicate claim ID and match percentage
    */
   async detectDuplicates(
     policyId: string,
@@ -27,7 +28,6 @@ export class DuplicateDetectionService {
     matchPercentage: number;
     detectionMethod: string;
   } | null> {
-    // Check for exact amount match within 5% variance
     const amountDuplicate = await this.checkAmountMatch(
       policyId,
       incidentDate,
@@ -40,7 +40,6 @@ export class DuplicateDetectionService {
       return amountDuplicate;
     }
 
-    // Check for description similarity using fuzzy matching
     const descriptionDuplicate = await this.checkDescriptionSimilarity(
       policyId,
       description,
@@ -52,7 +51,6 @@ export class DuplicateDetectionService {
       return descriptionDuplicate;
     }
 
-    // Check for temporal proximity (same user, same policy, within 24 hours)
     const temporalDuplicate = await this.checkTemporalProximity(
       policyId,
       claimAmount,
@@ -67,9 +65,6 @@ export class DuplicateDetectionService {
     return null;
   }
 
-  /**
-   * Detects duplicates based on: Policy ID + Incident Date + Claim Amount (within 5% variance)
-   */
   private async checkAmountMatch(
     policyId: string,
     incidentDate: Date,
@@ -79,7 +74,7 @@ export class DuplicateDetectionService {
     matchPercentage: number;
     detectionMethod: string;
   } | null> {
-    const variance = claimAmount * 0.05; // 5% variance
+    const variance = claimAmount * 0.05;
     const minAmount = claimAmount - variance;
     const maxAmount = claimAmount + variance;
 
@@ -95,7 +90,7 @@ export class DuplicateDetectionService {
       existingClaim.claimAmount >= minAmount &&
       existingClaim.claimAmount <= maxAmount
     ) {
-      const matchPercentage = 95 + Math.random() * 5; // 95-100% match
+      const matchPercentage = 95 + Math.random() * 5;
       return {
         duplicateClaimId: existingClaim.id,
         matchPercentage: Math.round(matchPercentage * 100) / 100,
@@ -106,9 +101,6 @@ export class DuplicateDetectionService {
     return null;
   }
 
-  /**
-   * Detects duplicates based on: Policy ID + Description similarity (using fuzzy matching)
-   */
   private async checkDescriptionSimilarity(
     policyId: string,
     description: string,
@@ -120,13 +112,12 @@ export class DuplicateDetectionService {
     const recentClaims = await this.claimRepository.find({
       where: { policyId },
       order: { createdAt: 'DESC' },
-      take: 20, // Check only recent claims for performance
+      take: 20,
     });
 
     for (const claim of recentClaims) {
       const similarity = this.calculateSimilarity(description, claim.description);
 
-      // Flag if similarity is above 80%
       if (similarity > 0.8) {
         return {
           duplicateClaimId: claim.id,
@@ -140,7 +131,7 @@ export class DuplicateDetectionService {
   }
 
   /**
-   * Detects duplicates based on: Same user submitting identical claims within 24 hours
+   * FIXED: Uses TypeORM MoreThan operator instead of a broken arrow function string
    */
   private async checkTemporalProximity(
     policyId: string,
@@ -155,7 +146,7 @@ export class DuplicateDetectionService {
     const recentClaim = await this.claimRepository.findOne({
       where: {
         policyId,
-        createdAt: () => `createdAt > '${twentyFourHoursAgo.toISOString()}'`,
+        createdAt: MoreThan(twentyFourHoursAgo),
       },
       order: { createdAt: 'DESC' },
     });
@@ -171,37 +162,25 @@ export class DuplicateDetectionService {
     return null;
   }
 
-  /**
-   * Calculate string similarity using Levenshtein-like approach (simplified)
-   */
   private calculateSimilarity(str1: string, str2: string): number {
     const s1 = str1.toLowerCase();
     const s2 = str2.toLowerCase();
-
     const longer = s1.length > s2.length ? s1 : s2;
     const shorter = s1.length > s2.length ? s2 : s1;
 
-    if (longer.length === 0) {
-      return 1.0;
-    }
+    if (longer.length === 0) return 1.0;
 
     const editDistance = this.getEditDistance(longer, shorter);
     return (longer.length - editDistance) / longer.length;
   }
 
-  /**
-   * Calculate Levenshtein distance between two strings
-   */
   private getEditDistance(s1: string, s2: string): number {
     const costs: number[] = [];
-    for (let k = 0; k <= s1.length; k++) {
-      costs[k] = k;
-    }
+    for (let k = 0; k <= s1.length; k++) costs[k] = k;
 
     for (let i = 1; i <= s2.length; i++) {
       costs[0] = i;
       let nw = i - 1;
-
       for (let j = 1; j <= s1.length; j++) {
         const cj = Math.min(
           1 + Math.min(costs[j], costs[j - 1]),
@@ -211,13 +190,9 @@ export class DuplicateDetectionService {
         costs[j] = cj;
       }
     }
-
     return costs[s1.length];
   }
 
-  /**
-   * Records a duplicate detection check in the database
-   */
   async recordDuplicateCheck(
     claimId: string,
     policyId: string,
@@ -236,9 +211,6 @@ export class DuplicateDetectionService {
     return this.duplicateCheckRepository.save(duplicateCheck);
   }
 
-  /**
-   * Mark a duplicate detection as false positive
-   */
   async markAsFalsePositive(
     duplicateCheckId: string,
     adminNotes: string,
@@ -249,18 +221,16 @@ export class DuplicateDetectionService {
       resolvedAt: new Date(),
     });
 
-    this.logger.log(
-      `Duplicate check ${duplicateCheckId} marked as false positive`,
-    );
+    this.logger.log(`Duplicate check ${duplicateCheckId} marked as false positive`);
   }
 
   /**
-   * Get all unresolved duplicate checks
+   * FIXED: Uses IsNull() operator for compatibility
    */
   async getUnresolvedDuplicates(): Promise<DuplicateClaimCheck[]> {
     return this.duplicateCheckRepository.find({
       where: {
-        resolvedAt: null,
+        resolvedAt: IsNull(),
         isFalsePositive: false,
       },
       order: { createdAt: 'DESC' },

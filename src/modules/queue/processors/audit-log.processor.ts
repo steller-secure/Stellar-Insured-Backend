@@ -1,6 +1,6 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import type { Job } from 'bull';
 import { AuditLogJobData } from '../interfaces/audit-log-job.interface';
 
 @Processor('audit-logs')

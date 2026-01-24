@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { QueueService } from '../queue/queue.service';
-import { AuditLogJobData } from '../queue/interfaces/audit-log-job.interface';
+import { QueueService } from '../../modules/queue/queue.service';
+import { AuditLogJobData } from '../../modules/queue/interfaces/audit-log-job.interface';
 
 @Injectable()
 export class AuditLogService {

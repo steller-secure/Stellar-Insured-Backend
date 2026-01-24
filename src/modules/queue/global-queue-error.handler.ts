@@ -1,42 +1,28 @@
-import { Process, OnGlobalEvent } from '@nestjs/bull';
+import { OnQueueActive, OnQueueCompleted, OnQueueFailed, OnQueueStalled, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import type { Job } from 'bull';
 
-/**
- * Global event handler for queue errors and events
- * Provides centralized error handling and logging for all queue jobs
- */
+@Processor('audit-logs')
 export class GlobalQueueErrorHandler {
   private readonly logger = new Logger(GlobalQueueErrorHandler.name);
 
-  @OnGlobalEvent('error')
-  handleError(error: Error, jobId: string | number): void {
-    this.logger.error(
-      `Queue error for job ${jobId}: ${error.message}`,
-      error.stack,
-    );
+  @OnQueueFailed()
+  handleFailed(job: Job, err: Error) {
+    this.logger.error(`Job ${job.id} failed with error: ${err.message}`);
   }
 
-  @OnGlobalEvent('failed')
-  handleFailed(job: Job, err: Error): void {
-    this.logger.error(
-      `Job ${job.id} (${job.name}) failed after ${job.attemptsMade}/${job.opts.attempts} attempts: ${err.message}`,
-      err.stack,
-    );
+  @OnQueueCompleted()
+  handleCompleted(job: Job, result: any) {
+    this.logger.log(`Job ${job.id} completed successfully`);
   }
 
-  @OnGlobalEvent('completed')
-  handleCompleted(job: Job, result: any): void {
-    this.logger.debug(`Job ${job.id} (${job.name}) completed successfully`);
+  @OnQueueStalled()
+  handleStalled(job: Job) {
+    this.logger.warn(`Job ${job.id} has stalled`);
   }
 
-  @OnGlobalEvent('stalled')
-  handleStalled(job: Job): void {
-    this.logger.warn(`Job ${job.id} (${job.name}) stalled and will be retried`);
-  }
-
-  @OnGlobalEvent('active')
-  handleActive(job: Job): void {
-    this.logger.debug(`Job ${job.id} (${job.name}) is now active`);
+  @OnQueueActive()
+  handleActive(job: Job) {
+    this.logger.log(`Job ${job.id} is now active`);
   }
 }

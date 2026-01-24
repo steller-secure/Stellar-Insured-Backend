@@ -3,7 +3,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { AuthService as SignupAuthService } from './services/auth.service';
 import { WalletService } from './services/wallet.service';
 import { SignupRequestDto } from './dtos/auth.dto';
-import { UserRole, SignupSource } from '../../users/entities/user.entity';
+import { UserRole, SignupSource } from '../users/entities/user.entity';
 
 describe('SignupAuthService', () => {
   let service: SignupAuthService;
