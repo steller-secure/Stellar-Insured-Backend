@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Proposal } from '../entities/proposal.entity';
 import { CreateProposalDto } from '../dto/create-proposal.dto';
 import { User, UserRole } from '../../modules/users/entities/user.entity';
+import { AuditService } from '../../modules/audit/services/audit.service';
+import { AuditActionType } from '../../modules/audit/enums/audit-action-type.enum';
 
 @Injectable()
 export class ProposalService {
@@ -12,6 +14,7 @@ export class ProposalService {
     private proposalRepository: Repository<Proposal>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private auditService: AuditService,
   ) {}
 
   async createProposal(createProposalDto: CreateProposalDto, userId: string): Promise<Proposal> {
@@ -54,7 +57,20 @@ export class ProposalService {
     proposal.votingEndDate = createProposalDto.votingEndDate ? new Date(createProposalDto.votingEndDate) : null;
 
     // Persist to database
-    return this.proposalRepository.save(proposal);
+    const savedProposal = await this.proposalRepository.save(proposal);
+
+    // Audit log the proposal submission
+    await this.auditService.logAction(
+      AuditActionType.PROPOSAL_SUBMITTED,
+      userId,
+      savedProposal.id,
+      {
+        title: savedProposal.title,
+        submitterWalletAddress: savedProposal.submitterWalletAddress,
+      },
+    );
+
+    return savedProposal;
   }
 
   async getProposalById(proposalId: string): Promise<Proposal> {
@@ -85,7 +101,8 @@ export class ProposalService {
     const proposal = await this.getProposalById(proposalId);
 
     // Check if user is the submitter or has admin privileges
-    if (proposal.submitter.id !== userId && !this.isAdmin(await this.userRepository.findOne({ where: { id: userId } }))) {
+    const currentUser = await this.userRepository.findOne({ where: { id: userId } });
+    if (proposal.submitter.id !== userId && !this.isAdmin(currentUser)) {
       throw new ForbiddenException('Only the proposal submitter or admin can update proposal status');
     }
 
@@ -97,7 +114,7 @@ export class ProposalService {
     return user && user.roles && user.roles.includes(UserRole.DAO);
   }
 
-  private isAdmin(user: User): boolean {
-    return user && user.roles && user.roles.includes(UserRole.ADMIN);
+  private isAdmin(user: User | null): boolean {
+    return !!(user && user.roles && user.roles.includes(UserRole.ADMIN));
   }
 }

@@ -5,6 +5,8 @@ import { CreateClaimDto } from '../dto/create-claim.dto';
 import { PolicyValidationService } from './policy-validation.service';
 import { DuplicateDetectionService } from './duplicate-detection.service';
 import { DuplicateClaimDetectedException } from '../exceptions/claim.exceptions';
+import { AuditService } from '../../modules/audit/services/audit.service';
+import { AuditActionType } from '../../modules/audit/enums/audit-action-type.enum';
 
 @Injectable()
 export class ClaimService {
@@ -14,6 +16,7 @@ export class ClaimService {
     private claimRepository: Repository<Claim>,
     private policyValidationService: PolicyValidationService,
     private duplicateDetectionService: DuplicateDetectionService,
+    private auditService: AuditService,
   ) {}
 
   /**
@@ -62,6 +65,18 @@ export class ClaimService {
 
     const savedClaim = await this.claimRepository.save(claim);
     this.logger.log(`Claim ${savedClaim.id} created successfully`);
+
+    // Audit log the claim submission
+    await this.auditService.logAction(
+      AuditActionType.CLAIM_SUBMITTED,
+      userId,
+      savedClaim.id,
+      {
+        claimAmount: savedClaim.claimAmount,
+        policyId: savedClaim.policyId,
+        claimType: savedClaim.claimType,
+      },
+    );
 
     // Step 4: Record duplicate detection (if found)
     if (duplicateResult) {

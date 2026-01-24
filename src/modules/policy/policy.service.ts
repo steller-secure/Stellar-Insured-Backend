@@ -16,6 +16,8 @@ import {
   PolicyExpiredEvent,
   PolicyCancelledEvent,
 } from '../../events';
+import { AuditService } from '../audit/services/audit.service';
+import { AuditActionType } from '../audit/enums/audit-action-type.enum';
 
 @Injectable()
 export class PolicyService {
@@ -27,6 +29,7 @@ export class PolicyService {
     private stateMachine: PolicyStateMachineService,
     private auditService: PolicyAuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly auditLogService: AuditService,
   ) {}
 
   /**
@@ -45,6 +48,18 @@ export class PolicyService {
 
     const savedPolicy = await this.policyRepository.save(policy);
     this.logger.log(`Policy created: ${savedPolicy.id} in ${savedPolicy.status} status`);
+
+    // Audit log the policy creation
+    await this.auditLogService.logAction(
+      AuditActionType.POLICY_CREATED,
+      userId,
+      savedPolicy.id,
+      {
+        policyNumber: savedPolicy.policyNumber,
+        coverageType: savedPolicy.coverageType,
+        premium: savedPolicy.premium,
+      },
+    );
 
     return savedPolicy;
   }

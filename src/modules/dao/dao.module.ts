@@ -4,9 +4,10 @@ import { DaoService } from './dao.service';
 import { DaoController } from './dao.controller';
 import { Proposal } from './entities/proposal.entity';
 import { Vote } from './entities/vote.entity';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Proposal, Vote])],
+  imports: [TypeOrmModule.forFeature([Proposal, Vote]), AuditModule],
   controllers: [DaoController],
   providers: [DaoService],
   exports: [DaoService],

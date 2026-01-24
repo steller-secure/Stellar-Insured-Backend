@@ -7,9 +7,10 @@ import { PolicyValidationService } from './services/policy-validation.service';
 import { DuplicateDetectionService } from './services/duplicate-detection.service';
 import { ClaimController } from './controllers/claim.controller';
 import { ClaimOwnerGuard } from './guards/claim-owner.guard';
+import { AuditModule } from '../modules/audit/audit.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Claim, DuplicateClaimCheck])],
+  imports: [TypeOrmModule.forFeature([Claim, DuplicateClaimCheck]), AuditModule],
   providers: [
     ClaimService,
     PolicyValidationService,

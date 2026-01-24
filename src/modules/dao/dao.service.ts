@@ -6,6 +6,8 @@ import { Vote } from './entities/vote.entity';
 import { User } from '../users/entities/user.entity';
 import { ProposalStatus } from './enums/proposal-status.enum';
 import { VoteType } from './enums/vote-type.enum';
+import { AuditService } from '../audit/services/audit.service';
+import { AuditActionType } from '../audit/enums/audit-action-type.enum';
 import {
   CreateProposalDto,
   CastVoteDto,
@@ -33,6 +35,7 @@ export class DaoService {
     @InjectRepository(Vote)
     private readonly voteRepository: Repository<Vote>,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   async createProposal(
@@ -54,6 +57,17 @@ export class DaoService {
     });
 
     const savedProposal = await this.proposalRepository.save(proposal);
+
+    // Audit log the proposal creation
+    await this.auditService.logAction(
+      AuditActionType.PROPOSAL_SUBMITTED,
+      user.id,
+      savedProposal.id,
+      {
+        title: savedProposal.title,
+        createdById: savedProposal.createdById,
+      },
+    );
 
     return this.toProposalResponse(savedProposal);
   }
@@ -166,7 +180,20 @@ export class DaoService {
         voteType: castVoteDto.voteType,
       });
 
-      return manager.save(vote);
+      const savedVote = await manager.save(vote);
+
+      // Audit log the vote casting
+      await this.auditService.logAction(
+        AuditActionType.VOTE_CAST,
+        user.id,
+        proposalId,
+        {
+          voteType: savedVote.voteType,
+          walletAddress: savedVote.walletAddress,
+        },
+      );
+
+      return savedVote;
     });
   }
 
