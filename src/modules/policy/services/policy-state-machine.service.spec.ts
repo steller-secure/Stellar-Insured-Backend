@@ -16,9 +16,7 @@ describe('PolicyStateMachineService', () => {
       providers: [PolicyStateMachineService],
     }).compile();
 
-    service = module.get<PolicyStateMachineService>(
-      PolicyStateMachineService,
-    );
+    service = module.get<PolicyStateMachineService>(PolicyStateMachineService);
   });
 
   describe('validateTransition', () => {
@@ -125,7 +123,9 @@ describe('PolicyStateMachineService', () => {
         PolicyTransitionAction.SUBMIT_FOR_APPROVAL,
       );
 
-      expect(() => service.validatePermission(transition, 'admin')).not.toThrow();
+      expect(() =>
+        service.validatePermission(transition, 'admin'),
+      ).not.toThrow();
     });
 
     it('should allow creator to submit for approval', () => {
@@ -297,8 +297,14 @@ describe('PolicyStateMachineService', () => {
 
       expect(transitions).toBeDefined();
       expect(transitions.length).toBeGreaterThan(0);
-      expect(transitions.some((t) => t.action === PolicyTransitionAction.SUBMIT_FOR_APPROVAL)).toBe(true);
-      expect(transitions.some((t) => t.action === PolicyTransitionAction.CANCEL)).toBe(true);
+      expect(
+        transitions.some(
+          t => t.action === PolicyTransitionAction.SUBMIT_FOR_APPROVAL,
+        ),
+      ).toBe(true);
+      expect(
+        transitions.some(t => t.action === PolicyTransitionAction.CANCEL),
+      ).toBe(true);
     });
 
     it('should return valid transitions from ACTIVE', () => {
@@ -306,7 +312,9 @@ describe('PolicyStateMachineService', () => {
 
       expect(transitions).toBeDefined();
       expect(transitions.length).toBeGreaterThan(0);
-      expect(transitions.some((t) => t.action === PolicyTransitionAction.SUSPEND)).toBe(true);
+      expect(
+        transitions.some(t => t.action === PolicyTransitionAction.SUSPEND),
+      ).toBe(true);
     });
 
     it('should return empty array for ARCHIVED', () => {
@@ -319,9 +327,7 @@ describe('PolicyStateMachineService', () => {
     it('should return available actions from DRAFT', () => {
       const actions = service.getAvailableActions(PolicyStatus.DRAFT);
 
-      expect(actions).toContain(
-        PolicyTransitionAction.SUBMIT_FOR_APPROVAL,
-      );
+      expect(actions).toContain(PolicyTransitionAction.SUBMIT_FOR_APPROVAL);
       expect(actions).toContain(PolicyTransitionAction.CANCEL);
     });
 

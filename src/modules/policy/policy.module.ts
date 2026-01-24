@@ -13,4 +13,4 @@ import { PolicyStatusHistory } from './entities/policy-status-history.entity';
   controllers: [PolicyController],
   exports: [PolicyStateMachineService, PolicyAuditService, PolicyService],
 })
-export class PolicyModule { }
+export class PolicyModule {}

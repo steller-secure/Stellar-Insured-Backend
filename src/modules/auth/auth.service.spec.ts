@@ -26,7 +26,8 @@ describe('SignupAuthService', () => {
   describe('signup', () => {
     it('should create a new user with valid wallet address', async () => {
       const signupDto: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         email: 'user@example.com',
         displayName: 'John Doe',
         acceptTerms: true,
@@ -45,7 +46,8 @@ describe('SignupAuthService', () => {
 
     it('should create user with only wallet address (email optional)', async () => {
       const signupDto: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         acceptTerms: true,
       };
 
@@ -69,7 +71,8 @@ describe('SignupAuthService', () => {
 
     it('should throw error for invalid email format', async () => {
       const signupDto: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         email: 'invalid-email',
         acceptTerms: true,
       };
@@ -99,7 +102,8 @@ describe('SignupAuthService', () => {
     it('should throw conflict error when email already exists', async () => {
       const email = 'user@example.com';
       const signupDto1: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         email,
         acceptTerms: true,
       };
@@ -121,7 +125,8 @@ describe('SignupAuthService', () => {
 
     it('should normalize wallet address to uppercase', async () => {
       const signupDto: SignupRequestDto = {
-        walletAddress: 'gbbd47uzq5akrovbvvvx4n2qg7xjxvg7r34oqcvm4pdxgjmxz2bpsyqa',
+        walletAddress:
+          'gbbd47uzq5akrovbvvvx4n2qg7xjxvg7r34oqcvm4pdxgjmxz2bpsyqa',
         acceptTerms: true,
       };
 
@@ -140,7 +145,8 @@ describe('SignupAuthService', () => {
 
     it('should generate unique referral code', async () => {
       const signupDto1: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         acceptTerms: true,
       };
 
@@ -171,7 +177,8 @@ describe('SignupAuthService', () => {
 
     it('should return true for existing wallet', async () => {
       const signupDto: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         acceptTerms: true,
       };
 
@@ -191,7 +198,8 @@ describe('SignupAuthService', () => {
     it('should return true for existing email', async () => {
       const email = 'user@example.com';
       const signupDto: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         email,
         acceptTerms: true,
       };
@@ -206,7 +214,8 @@ describe('SignupAuthService', () => {
   describe('getUserById', () => {
     it('should retrieve user by ID', async () => {
       const signupDto: SignupRequestDto = {
-        walletAddress: 'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
+        walletAddress:
+          'GBBD47UZQ5AKROVBVVVX4N2QG7XJXVG7R34OQCVM4PDXGJMXZ2BPSYQA',
         acceptTerms: true,
       };
 

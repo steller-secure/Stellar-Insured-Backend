@@ -423,9 +423,7 @@ describe('PolicyService - State Transitions', () => {
       const policy = service.createPolicy(dto, 'user-123');
       const actions = service.getAvailableTransitions(policy.id);
 
-      expect(actions).toContain(
-        PolicyTransitionAction.SUBMIT_FOR_APPROVAL,
-      );
+      expect(actions).toContain(PolicyTransitionAction.SUBMIT_FOR_APPROVAL);
       expect(actions).toContain(PolicyTransitionAction.CANCEL);
     });
 
@@ -463,9 +461,7 @@ describe('PolicyService - State Transitions', () => {
 
       expect(actions).toContain(PolicyTransitionAction.SUSPEND);
       expect(actions).toContain(PolicyTransitionAction.CANCEL);
-      expect(actions).not.toContain(
-        PolicyTransitionAction.SUBMIT_FOR_APPROVAL,
-      );
+      expect(actions).not.toContain(PolicyTransitionAction.SUBMIT_FOR_APPROVAL);
     });
   });
 });

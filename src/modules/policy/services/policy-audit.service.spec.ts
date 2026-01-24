@@ -185,7 +185,11 @@ describe('PolicyAuditService', () => {
       };
 
       service.recordAuditEntry(entry);
-      const trail = service.getAuditTrailByDateRange('policy-123', before, after);
+      const trail = service.getAuditTrailByDateRange(
+        'policy-123',
+        before,
+        after,
+      );
 
       expect(trail).toHaveLength(0);
     });

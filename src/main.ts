@@ -76,9 +76,7 @@ async function bootstrap(): Promise<void> {
   // Log startup information
   /* eslint-disable no-console */
   console.log(`\n Application is running on: http://localhost:${port}`);
-  console.log(
-    ` Environment: ${configService.get('NODE_ENV', 'development')}`,
-  );
+  console.log(` Environment: ${configService.get('NODE_ENV', 'development')}`);
   console.log(`📋 Swagger UI: http://localhost:${port}/api/docs`);
   /* eslint-enable no-console */
 }

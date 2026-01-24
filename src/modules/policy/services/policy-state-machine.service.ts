@@ -35,22 +35,16 @@ export class PolicyStateMachineService {
     const validTransitions =
       POLICY_STATE_TRANSITIONS_MAP.get(currentStatus) || [];
 
-    const transition = validTransitions.find((t) => t.action === action);
+    const transition = validTransitions.find(t => t.action === action);
 
     if (!transition) {
-      const availableActions = validTransitions
-        .map((t) => t.action)
-        .join(', ');
+      const availableActions = validTransitions.map(t => t.action).join(', ');
       const reason =
         availableActions.length > 0
           ? `Available actions: ${availableActions}`
           : 'No transitions allowed from this status';
 
-      throw new InvalidPolicyTransitionException(
-        currentStatus,
-        action,
-        reason,
-      );
+      throw new InvalidPolicyTransitionException(currentStatus, action, reason);
     }
 
     this.logger.debug(
@@ -93,10 +87,7 @@ export class PolicyStateMachineService {
    * @param reason - The provided reason (if any)
    * @throws MissingTransitionReasonException if reason is required but not provided
    */
-  validateReason(
-    transition: PolicyTransition,
-    reason?: string,
-  ): void {
+  validateReason(transition: PolicyTransition, reason?: string): void {
     if (transition.requiresReason && !reason) {
       throw new MissingTransitionReasonException(transition.action);
     }
@@ -185,7 +176,7 @@ export class PolicyStateMachineService {
    * @returns Array of available actions
    */
   getAvailableActions(status: PolicyStatus): PolicyTransitionAction[] {
-    return this.getValidTransitions(status).map((t) => t.action);
+    return this.getValidTransitions(status).map(t => t.action);
   }
 
   /**
@@ -195,10 +186,7 @@ export class PolicyStateMachineService {
    * @param toStatus - Target status
    * @returns True if a path exists
    */
-  canReachStatus(
-    fromStatus: PolicyStatus,
-    toStatus: PolicyStatus,
-  ): boolean {
+  canReachStatus(fromStatus: PolicyStatus, toStatus: PolicyStatus): boolean {
     if (fromStatus === toStatus) return true;
 
     const visited = new Set<PolicyStatus>();

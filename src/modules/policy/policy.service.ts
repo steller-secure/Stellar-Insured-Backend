@@ -27,7 +27,7 @@ export class PolicyService {
     private stateMachine: PolicyStateMachineService,
     private auditService: PolicyAuditService,
     private readonly eventEmitter: EventEmitter2,
-  ) { }
+  ) {}
 
   /**
    * Creates a new policy in DRAFT status.
@@ -172,7 +172,10 @@ export class PolicyService {
   /**
    * Issue a new policy (simplified for event emission).
    */
-  issuePolicy(policyId: string, userId: string): { policyId: string; status: string } {
+  issuePolicy(
+    policyId: string,
+    userId: string,
+  ): { policyId: string; status: string } {
     this.eventEmitter.emit(
       EventNames.POLICY_ISSUED,
       new PolicyIssuedEvent(policyId, userId),
@@ -183,7 +186,10 @@ export class PolicyService {
   /**
    * Renew a policy (simplified for event emission).
    */
-  renewPolicy(policyId: string, userId: string): { policyId: string; status: string } {
+  renewPolicy(
+    policyId: string,
+    userId: string,
+  ): { policyId: string; status: string } {
     this.eventEmitter.emit(
       EventNames.POLICY_RENEWED,
       new PolicyRenewedEvent(policyId, userId),
@@ -194,7 +200,10 @@ export class PolicyService {
   /**
    * Mark a policy as expired (simplified for event emission).
    */
-  expirePolicy(policyId: string, userId: string): { policyId: string; status: string } {
+  expirePolicy(
+    policyId: string,
+    userId: string,
+  ): { policyId: string; status: string } {
     this.eventEmitter.emit(
       EventNames.POLICY_EXPIRED,
       new PolicyExpiredEvent(policyId, userId),

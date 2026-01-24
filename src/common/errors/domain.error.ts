@@ -11,7 +11,10 @@ export abstract class DomainError extends Error {
 
 export class EntityNotFoundError extends DomainError {
   constructor(entity: string, identifier: string) {
-    super(`${entity} con ID ${identifier} no fue encontrado`, 'ENTITY_NOT_FOUND');
+    super(
+      `${entity} con ID ${identifier} no fue encontrado`,
+      'ENTITY_NOT_FOUND',
+    );
   }
 }
 
@@ -31,7 +34,7 @@ export class RateLimitError extends DomainError {
   constructor(public readonly remainingSeconds?: number) {
     super(
       `Demasiadas solicitudes. Por favor, intente de nuevo en ${remainingSeconds || 60} segundos.`,
-      'RATE_LIMIT_EXCEEDED'
+      'RATE_LIMIT_EXCEEDED',
     );
   }
 }

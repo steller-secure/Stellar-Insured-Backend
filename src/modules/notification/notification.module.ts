@@ -25,4 +25,4 @@ import {
   ],
   exports: [NotificationService],
 })
-export class NotificationModule { }
+export class NotificationModule {}

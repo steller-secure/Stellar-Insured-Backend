@@ -22,7 +22,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) { }
+  ) {}
 
   async generateChallenge(walletAddress: string) {
     this.logger.log(`Generating login challenge for wallet ${walletAddress}`);
@@ -38,11 +38,7 @@ export class AuthService {
     const key = `auth:challenge:${walletAddress}`;
     const ttl = 10 * 60 * 1000; // 10 minutes in milliseconds
 
-    await this.cacheManager.set(
-      key,
-      { nonce, timestamp, message },
-      ttl,
-    );
+    await this.cacheManager.set(key, { nonce, timestamp, message }, ttl);
 
     // 4. Return response
     const expiresAt = new Date((timestamp + 600) * 1000).toISOString();
@@ -58,10 +54,14 @@ export class AuthService {
 
     // Check Lockout
     const lockoutKey = `auth:lockout:${walletAddress}`;
-    const failures = await this.cacheManager.get<number>(lockoutKey) || 0;
+    const failures = (await this.cacheManager.get<number>(lockoutKey)) || 0;
     if (failures >= 5) {
-      this.logger.warn(`Wallet ${walletAddress} is locked out due to too many failed attempts`);
-      throw new BadRequestException('Wallet is temporarily locked due to too many failed attempts. Try again in 15 minutes.');
+      this.logger.warn(
+        `Wallet ${walletAddress} is locked out due to too many failed attempts`,
+      );
+      throw new BadRequestException(
+        'Wallet is temporarily locked due to too many failed attempts. Try again in 15 minutes.',
+      );
     }
 
     const key = `auth:challenge:${walletAddress}`;
@@ -75,7 +75,8 @@ export class AuthService {
 
     // Verify timestamp (5 minute window check)
     const currentTimestamp = Math.floor(Date.now() / 1000);
-    if (currentTimestamp - timestamp > 300) { // 300 seconds = 5 mins
+    if (currentTimestamp - timestamp > 300) {
+      // 300 seconds = 5 mins
       await this.incrementFailure(walletAddress);
       throw new BadRequestException('Challenge expired (5 minute window)');
     }
@@ -96,9 +97,13 @@ export class AuthService {
       }
     } catch (error: any) {
       await this.incrementFailure(walletAddress);
-      this.logger.error(`Signature verification failed for ${walletAddress}: ${error.message}`);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      throw new UnauthorizedException('Signature verification failed: ' + error.message);
+      this.logger.error(
+        `Signature verification failed for ${walletAddress}: ${error.message}`,
+      );
+
+      throw new UnauthorizedException(
+        'Signature verification failed: ' + error.message,
+      );
     }
 
     // Check User
@@ -121,7 +126,8 @@ export class AuthService {
 
   private async incrementFailure(walletAddress: string) {
     const lockoutKey = `auth:lockout:${walletAddress}`;
-    const failures = (await this.cacheManager.get<number>(lockoutKey) || 0) + 1;
+    const failures =
+      ((await this.cacheManager.get<number>(lockoutKey)) || 0) + 1;
     const ttl = 15 * 60 * 1000; // 15 minutes
     await this.cacheManager.set(lockoutKey, failures, ttl);
   }
