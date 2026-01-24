@@ -60,8 +60,15 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
   protected async handleRequest(
     requestProps: ThrottlerRequest,
   ): Promise<boolean> {
-    const { context, limit, ttl, throttler, blockDuration, getTracker, generateKey } =
-      requestProps;
+    const {
+      context,
+      limit,
+      ttl,
+      throttler,
+      blockDuration,
+      getTracker,
+      generateKey,
+    } = requestProps;
 
     const response = context.switchToHttp().getResponse<Response>();
     const request = context.switchToHttp().getRequest<Request>();
@@ -87,7 +94,10 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     response.setHeader('X-RateLimit-Limit', limit);
     response.setHeader('X-RateLimit-Remaining', remaining);
     response.setHeader('X-RateLimit-Reset', resetTime);
-    response.setHeader('X-RateLimit-Policy', `${limit};w=${Math.ceil(ttl / 1000)}`);
+    response.setHeader(
+      'X-RateLimit-Policy',
+      `${limit};w=${Math.ceil(ttl / 1000)}`,
+    );
 
     // Check if limit exceeded
     if (totalHits > limit) {

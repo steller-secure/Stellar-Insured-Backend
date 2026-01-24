@@ -8,61 +8,50 @@ import { AppConfigService } from './config/app-config.service';
 import { Logger } from '@nestjs/common';
 
 async function bootstrap(): Promise<void> {
-  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule);
 
-  try {
-    logger.log('🚀 Starting NestJS application...');
+  // Get configuration service
+  const configService = app.get(ConfigService);
 
-    const app = await NestFactory.create(AppModule, {
-      logger: ['error', 'warn', 'log', 'debug', 'verbose'],
-    });
+  // Enable CORS
+  const corsOrigin = configService.get<string>('CORS_ORIGIN');
+  app.enableCors({
+    origin: corsOrigin ? corsOrigin.split(',') : '*',
+    credentials: configService.get<boolean>('CORS_CREDENTIALS', true),
+  });
 
-    logger.log('✅ NestFactory created successfully');
+  // Security middleware
+  app.use(helmet());
 
-    // Get configuration service
-    const configService = app.get(AppConfigService);
-    logger.log('✅ Config service initialized');
+  // Set global prefix
+  app.setGlobalPrefix('api/v1');
 
-    // Enable CORS - Use typed getters
-    app.enableCors({
-      origin: configService.corsOrigin,
-      credentials: configService.corsCredentials,
-    });
-    logger.log('✅ CORS enabled');
+  // Global validation pipe
+  app.useGlobalPipes(AppValidationPipe);
 
-    // Security middleware
-    app.use(helmet());
-    logger.log('✅ Security middleware loaded');
+  // Global exception filter
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
-    // Set global prefix
-    app.setGlobalPrefix('api/v1');
-    logger.log('✅ Global prefix set to api/v1');
+  // FIXED: Enable shutdown hooks. 
+  // This allows Nest to trigger onModuleDestroy() inside your QueueService automatically.
+  app.enableShutdownHooks();
 
-    // Global validation pipe
-    app.useGlobalPipes(AppValidationPipe);
-    logger.log('✅ Global validation pipe configured');
+  // Swagger setup
+  if (configService.get<boolean>('SWAGGER_ENABLED', true)) {
+    const config = new DocumentBuilder()
+      .setTitle('Stellar Insured API')
+      .setDescription('API documentation for Stellar Insured backend')
+      .setVersion(configService.get<string>('APP_VERSION', '1.0'))
+      .addBearerAuth()
+      .build();
 
-    // Global exception filter
-    app.useGlobalFilters(new GlobalExceptionFilter());
-    logger.log('✅ Global exception filter configured');
-
-    // Enable shutdown hooks
-    app.enableShutdownHooks();
-    logger.log('✅ Shutdown hooks enabled');
-
-    // Swagger setup - Use typed getters
-    if (configService.swaggerEnabled) {
-      const config = new DocumentBuilder()
-        .setTitle('Stellar Insured API')
-        .setDescription('API documentation for Stellar Insured backend')
-        .setVersion(configService.appVersion)
-        .addBearerAuth()
-        .build();
-
-      const document = SwaggerModule.createDocument(app, config);
-      SwaggerModule.setup(configService.swaggerPath, app, document);
-      logger.log('✅ Swagger documentation configured');
-    }
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup(
+      configService.get<string>('SWAGGER_PATH', '/api/docs'),
+      app,
+      document,
+    );
+  }
 
     // Get port from config - Use typed getter
     const port = configService.port;
@@ -99,12 +88,12 @@ async function bootstrap(): Promise<void> {
       logger.error(`Unknown error: ${JSON.stringify(error)}`);
     }
 
-    process.exit(1);
-  }
+  // Log startup information
+  /* eslint-disable no-console */
+  console.log(`\n Application is running on: http://localhost:${port}`);
+  console.log(` Environment: ${configService.get('NODE_ENV', 'development')}`);
+  console.log(`📋 Swagger UI: http://localhost:${port}/api/docs`);
+  /* eslint-enable no-console */
 }
 
-// Wrap bootstrap in try-catch at the top level
-bootstrap().catch(error => {
-  console.error('💥 Unhandled error in bootstrap:', error);
-  process.exit(1);
-});
+void bootstrap();

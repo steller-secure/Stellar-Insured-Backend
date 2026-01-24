@@ -1,5 +1,18 @@
-import { Controller, Post, Get, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiTooManyRequestsResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Body,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiTooManyRequestsResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { PolicyService } from './policy.service';
 import { CreatePolicyDto } from './dto/create-policy.dto';
@@ -33,7 +46,10 @@ export class PolicyController {
 
   @Get(':id/audit-trail')
   @ApiOperation({ summary: 'Get policy audit trail' })
-  @ApiResponse({ status: 200, description: 'Audit trail retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Audit trail retrieved successfully',
+  })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   @Throttle({ public: { limit: 50, ttl: 60000 } }) // 50 reads per minute
   getAuditTrail(@Param('id') id: string) {
@@ -55,10 +71,7 @@ export class PolicyController {
   @ApiResponse({ status: 200, description: 'Policy transitioned successfully' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
   @Throttle({ admin: { limit: 100, ttl: 60000 } }) // Admin endpoint: 100 per minute
-  transitionPolicy(
-    @Param('id') id: string,
-    @Body() dto: PolicyTransitionDto,
-  ) {
+  transitionPolicy(@Param('id') id: string, @Body() dto: PolicyTransitionDto) {
     // TODO: Extract userId and userRole from request context
     const userId = 'user-123';
     const userRoles = ['admin'];

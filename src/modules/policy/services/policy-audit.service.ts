@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PolicyAuditEntry, PolicyStateChangeEvent } from '../types/policy-transition.types';
+import {
+  PolicyAuditEntry,
+  PolicyStateChangeEvent,
+} from '../types/policy-transition.types';
 import { PolicyStatus } from '../enums/policy-status.enum';
 
 @Injectable()
@@ -36,7 +39,7 @@ export class PolicyAuditService {
    * @returns Array of audit entries for the policy
    */
   getAuditTrail(policyId: string): PolicyAuditEntry[] {
-    return this.auditLog.filter((entry) => entry.policyId === policyId);
+    return this.auditLog.filter(entry => entry.policyId === policyId);
   }
 
   /**
@@ -52,7 +55,7 @@ export class PolicyAuditService {
     endDate: Date,
   ): PolicyAuditEntry[] {
     return this.getAuditTrail(policyId).filter(
-      (entry) => entry.timestamp >= startDate && entry.timestamp <= endDate,
+      entry => entry.timestamp >= startDate && entry.timestamp <= endDate,
     );
   }
 
@@ -69,7 +72,7 @@ export class PolicyAuditService {
     let entries = this.getAuditTrail(policyId);
 
     if (fromStatus) {
-      entries = entries.filter((entry) => entry.fromStatus === fromStatus);
+      entries = entries.filter(entry => entry.fromStatus === fromStatus);
     }
 
     return entries;
@@ -96,7 +99,7 @@ export class PolicyAuditService {
     timestamp: Date;
     reason?: string;
   }> {
-    return this.getAuditTrail(policyId).map((entry) => ({
+    return this.getAuditTrail(policyId).map(entry => ({
       fromStatus: entry.fromStatus,
       toStatus: entry.toStatus,
       transitionedBy: entry.transitionedBy,

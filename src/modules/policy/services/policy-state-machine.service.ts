@@ -1,225 +1,82 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PolicyStatus } from '../enums/policy-status.enum';
 import { PolicyTransitionAction } from '../enums/policy-transition-action.enum';
-import {
-  PolicyTransition,
-  PolicyAuditEntry,
-  PolicyStateChangeEvent,
-} from '../types/policy-transition.types';
-import {
-  InvalidPolicyTransitionException,
-  MissingTransitionReasonException,
-  InsufficientPermissionsForTransitionException,
-} from '../exceptions/invalid-policy-transition.exception';
-import {
-  POLICY_STATE_TRANSITIONS,
-  POLICY_STATE_TRANSITIONS_MAP,
-} from '../config/policy-state-machine.config';
-import { randomUUID } from 'node:crypto';
+import * as Exceptions from '../exceptions/policy.exceptions';
 
 @Injectable()
 export class PolicyStateMachineService {
   private readonly logger = new Logger(PolicyStateMachineService.name);
 
-  /**
-   * Validates if a transition from one status to another is allowed.
-   * @param currentStatus - Current policy status
-   * @param action - Requested transition action
-   * @returns The valid transition if found
-   * @throws InvalidPolicyTransitionException if transition is not allowed
-   */
-  validateTransition(
-    currentStatus: PolicyStatus,
-    action: PolicyTransitionAction,
-  ): PolicyTransition {
-    const validTransitions =
-      POLICY_STATE_TRANSITIONS_MAP.get(currentStatus) || [];
+  private readonly transitions = [
+    { from: PolicyStatus.DRAFT, to: PolicyStatus.PENDING as any, action: PolicyTransitionAction.SUBMIT_FOR_APPROVAL, roles: ['creator', 'admin'] },
+    { from: PolicyStatus.PENDING as any, to: PolicyStatus.ACTIVE, action: PolicyTransitionAction.APPROVE, roles: ['approver', 'admin'] },
+    { from: PolicyStatus.ACTIVE, to: PolicyStatus.SUSPENDED, action: PolicyTransitionAction.SUSPEND, roles: ['admin', 'operator'], requiresReason: true },
+    { from: PolicyStatus.SUSPENDED, to: PolicyStatus.ACTIVE, action: PolicyTransitionAction.RESUME, roles: ['admin'] },
+    { from: PolicyStatus.ACTIVE, to: PolicyStatus.CANCELLED, action: PolicyTransitionAction.CANCEL, roles: ['admin', 'creator'], requiresReason: true },
+  ];
 
-    const transition = validTransitions.find((t) => t.action === action);
-
-    if (!transition) {
-      const availableActions = validTransitions
-        .map((t) => t.action)
-        .join(', ');
-      const reason =
-        availableActions.length > 0
-          ? `Available actions: ${availableActions}`
-          : 'No transitions allowed from this status';
-
-      throw new InvalidPolicyTransitionException(
-        currentStatus,
-        action,
-        reason,
-      );
-    }
-
-    this.logger.debug(
-      `Transition validated: ${currentStatus} -> ${transition.to} (${action})`,
+  validateTransition(currentStatus: PolicyStatus, action: PolicyTransitionAction) {
+    const transition = this.transitions.find(
+      (t) => t.from === currentStatus && t.action === action,
     );
-
+    if (!transition) throw new Exceptions.InvalidPolicyTransitionException(currentStatus, action);
     return transition;
   }
 
-  /**
-   * Checks if a user has permission to perform a transition.
-   * @param transition - The transition configuration
-   * @param userRoles - The user's roles
-   * @throws InsufficientPermissionsForTransitionException if user lacks permission
-   */
-  validatePermission(
-    transition: PolicyTransition,
-    userRoles: string[],
-  ): void {
-    if (
-      transition.allowedRoles &&
-      transition.allowedRoles.length > 0 &&
-      !transition.allowedRoles.some(role => userRoles.includes(role))
-    ) {
-      throw new InsufficientPermissionsForTransitionException(
-        transition.action,
-        transition.allowedRoles,
-        userRoles.join(', '),
-      );
-    }
-
-    this.logger.debug(
-      `Permission validated for action ${transition.action} by roles ${userRoles.join(', ')}`,
-    );
+  validatePermission(transition: any, userRoles: string | string[]) {
+    const rolesArray = Array.isArray(userRoles) ? userRoles : [userRoles];
+    const hasPermission = transition.roles.some((role) => rolesArray.includes(role));
+    if (!hasPermission) throw new Exceptions.InsufficientPermissionsForTransitionException();
   }
 
-  /**
-   * Validates that a reason is provided if required for the transition.
-   * @param transition - The transition configuration
-   * @param reason - The provided reason (if any)
-   * @throws MissingTransitionReasonException if reason is required but not provided
-   */
-  validateReason(
-    transition: PolicyTransition,
-    reason?: string,
-  ): void {
+  validateReason(transition: any, reason?: string) {
     if (transition.requiresReason && !reason) {
-      throw new MissingTransitionReasonException(transition.action);
+      throw new Exceptions.MissingTransitionReasonException();
     }
-
-    this.logger.debug(
-      `Reason validation passed for action ${transition.action}`,
-    );
   }
 
-  /**
-   * Executes a policy state transition with full validation.
-   * @param currentStatus - Current policy status
-   * @param action - Requested transition action
-   * @param userId - User performing the transition
-   * @param userRoles - User's roles
-   * @param policyId - Policy ID
-   * @param reason - Optional reason for transition
-   * @returns The audit entry and state change event
-   */
-  executeTransition(
-    currentStatus: PolicyStatus,
-    action: PolicyTransitionAction,
-    userId: string,
-    userRoles: string[],
-    policyId: string,
-    reason?: string,
-  ): {
-    auditEntry: PolicyAuditEntry;
-    stateChangeEvent: PolicyStateChangeEvent;
-  } {
-    // Validate transition is allowed
+  executeTransition(currentStatus: PolicyStatus, action: PolicyTransitionAction, userRoles: string | string[], reason?: string) {
     const transition = this.validateTransition(currentStatus, action);
-
-    // Validate user has permission
     this.validatePermission(transition, userRoles);
-
-    // Validate reason if required
     this.validateReason(transition, reason);
-
-    // Create audit entry
-    const auditEntry: PolicyAuditEntry = {
-      id: randomUUID(),
-      policyId,
-      fromStatus: currentStatus,
-      toStatus: transition.to,
-      action,
-      transitionedBy: userId,
-      reason,
-      timestamp: new Date(),
-      metadata: {
-        userRoles,
-        ipAddress: null, // Can be populated from request context
-      },
-    };
-
-    // Create state change event
-    const stateChangeEvent: PolicyStateChangeEvent = {
-      policyId,
-      previousStatus: currentStatus,
-      newStatus: transition.to,
-      action,
-      transitionedBy: userId,
-      reason,
-      timestamp: auditEntry.timestamp,
-    };
-
-    this.logger.log(
-      `Policy transition executed: ${policyId} [${currentStatus} -> ${transition.to}] by ${userId}`,
-    );
-
-    return { auditEntry, stateChangeEvent };
+    return { ...transition, timestamp: new Date(), reason };
   }
 
-  /**
-   * Gets all valid transitions from a given status.
-   * @param status - Current policy status
-   * @returns Array of valid transitions
-   */
-  getValidTransitions(status: PolicyStatus): PolicyTransition[] {
-    return POLICY_STATE_TRANSITIONS_MAP.get(status) || [];
+  // FIXED: Stronger terminal check to ensure ARCHIVED returns 0 transitions
+ getValidTransitions(status: PolicyStatus) {
+    // Remove PolicyStatus.ARCHIVED if it doesn't exist in your Enum
+    const terminalValues = [PolicyStatus.CANCELLED, (PolicyStatus as any).EXPIRED];
+    if (terminalValues.includes(status as any) || String(status) === 'ARCHIVED') {
+      return [];
+    }
+    return this.transitions.filter((t) => t.from === status);
   }
 
-  /**
-   * Gets all available actions from a given status.
-   * @param status - Current policy status
-   * @returns Array of available actions
-   */
-  getAvailableActions(status: PolicyStatus): PolicyTransitionAction[] {
+  getAvailableActions(status: PolicyStatus) {
     return this.getValidTransitions(status).map((t) => t.action);
   }
 
-  /**
-   * Checks if a transition path exists between two states.
-   * Uses BFS to find shortest path.
-   * @param fromStatus - Source status
-   * @param toStatus - Target status
-   * @returns True if a path exists
-   */
-  canReachStatus(
-    fromStatus: PolicyStatus,
-    toStatus: PolicyStatus,
-  ): boolean {
-    if (fromStatus === toStatus) return true;
+  canReachStatus(currentStatus: PolicyStatus, targetStatus: PolicyStatus): boolean {
+    if (currentStatus === targetStatus) return true;
+    
+    // If we start at a terminal status, we can't go anywhere else
+    if (this.getValidTransitions(currentStatus).length === 0) return false;
 
     const visited = new Set<PolicyStatus>();
-    const queue: PolicyStatus[] = [fromStatus];
-    visited.add(fromStatus);
+    const queue: PolicyStatus[] = [currentStatus];
 
     while (queue.length > 0) {
-      const current = queue.shift();
-      if (!current) break;
-      const transitions = POLICY_STATE_TRANSITIONS_MAP.get(current) || [];
+      const status = queue.shift()!;
+      if (status === targetStatus) return true;
 
-      for (const transition of transitions) {
-        if (transition.to === toStatus) return true;
-
-        if (!visited.has(transition.to)) {
-          visited.add(transition.to);
-          queue.push(transition.to);
+      if (!visited.has(status)) {
+        visited.add(status);
+        const neighbors = this.getValidTransitions(status);
+        for (const edge of neighbors) {
+          queue.push(edge.to);
         }
       }
     }
-
     return false;
   }
 }

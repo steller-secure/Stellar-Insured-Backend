@@ -1,15 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { AuditLogJobData } from './interfaces/audit-log-job.interface';
 
 @Injectable()
-export class QueueService {
+export class QueueService implements OnModuleDestroy {
   constructor(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     @InjectQueue('audit-logs')
     private readonly auditLogsQueue: Queue<AuditLogJobData>,
   ) {}
+
+  /**
+   * Automatically triggered by NestJS shutdown hooks
+   */
+  async onModuleDestroy() {
+    /* eslint-disable no-console */
+    console.log('Initiating graceful shutdown of queues...');
+    try {
+      await this.closeQueues();
+      console.log('Queues gracefully shut down');
+    } catch (error) {
+      console.error('Error during queue shutdown:', error);
+    }
+    /* eslint-enable no-console */
+  }
 
   /**
    * Add an audit log job to the queue
@@ -41,7 +56,8 @@ export class QueueService {
   }
 
   /**
-   * Drain all queues
+   * Empty all waiting jobs from the queue
+   * FIXED: Bull uses .empty() instead of .drain()
    */
   async drainQueues(): Promise<void> {
     await this.auditLogsQueue.empty();
@@ -52,15 +68,5 @@ export class QueueService {
    */
   async closeQueues(): Promise<void> {
     await this.auditLogsQueue.close();
-  }
-
-  async onApplicationShutdown(signal?: string) {
-    try {
-      await this.drainQueues();
-      await this.closeQueues();
-      console.log(`Queues gracefully shut down (signal: ${signal})`);
-    } catch (err) {
-      console.error('Error during queue shutdown', err);
-    }
   }
 }

@@ -109,17 +109,17 @@ export class ProposalService {
   ): Promise<Proposal> {
     const proposal = await this.getProposalById(proposalId);
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+ // src/dao/services/proposal.service.ts
 
-    // Check if user is the submitter or has admin privileges
-    if (proposal.submitter.id !== userId && !this.isAdmin(user)) {
-      throw new ForbiddenException(
-        'Only the proposal submitter or admin can update proposal status',
-      );
-    }
+const user = await this.userRepository.findOne({ where: { id: userId } });
+
+// Check if the user exists and is NOT the submitter AND is NOT an admin
+if (proposal.submitter.id !== userId) {
+  const isUserAdmin = user ? this.isAdmin(user) : false;
+  if (!isUserAdmin) {
+    throw new ForbiddenException('You do not have permission to access this proposal');
+  }
+}
 
     proposal.status = status as any;
     return this.proposalRepository.save(proposal);

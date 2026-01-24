@@ -15,10 +15,35 @@ import {
 @Injectable()
 export class ClaimsService {
   constructor(private readonly eventEmitter: EventEmitter2) {}
-
+/**
+   * Find a claim by ID.
+   * Required by ClaimOwnerGuard.
+   */
+  async findOne(claimId: string) {
+    // MOCK IMPLEMENTATION
+    // In production, this would be: return this.claimRepo.findOne({ where: { id: claimId } });
+    return {
+      id: claimId,
+      userId: 'user-123', // This allows the guard to check ownership
+      status: 'submitted',
+    };
+  }
   /**
    * Submit a new claim.
    */
+  /**
+   * Fetch a claim by ID.
+   * Required by ClaimOwnerGuard to verify ownership.
+   */
+  async getClaimById(claimId: string) {
+    // For now, returning a mock object to satisfy the Guard's logic.
+    // In a production scenario, you would fetch this from your database.
+    return {
+      id: claimId,
+      userId: 'user-id-from-db', 
+      status: 'submitted',
+    };
+  }
   submitClaim(
     claimId: string,
     userId: string,

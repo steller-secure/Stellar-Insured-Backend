@@ -15,8 +15,7 @@ export class WalletService {
   /**
    * Email validation regex pattern
    */
-  private readonly EMAIL_REGEX =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  private readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   /**
    * Validates if the provided address is a valid Stellar public key
@@ -103,7 +102,9 @@ export class WalletService {
     try {
       // Basic validation: check if all parameters are provided
       if (!walletAddress || !message || !signature) {
-        throw new BadRequestException('Missing required parameters for signature verification');
+        throw new BadRequestException(
+          'Missing required parameters for signature verification',
+        );
       }
 
       // TODO: Implement actual Stellar signature verification using stellar-sdk

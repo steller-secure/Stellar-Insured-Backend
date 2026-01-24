@@ -15,7 +15,7 @@ import {
 export class DaoEventListeners {
   private readonly logger = new Logger(DaoEventListeners.name);
 
-  constructor(private readonly notificationService: NotificationService) { }
+  constructor(private readonly notificationService: NotificationService) {}
 
   @OnEvent(EventNames.DAO_PROPOSAL_CREATED)
   handleDaoProposalCreated(event: DaoProposalCreatedEvent): void {

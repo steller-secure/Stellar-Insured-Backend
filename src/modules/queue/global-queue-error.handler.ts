@@ -1,46 +1,28 @@
-import type { Job, Queue } from 'bull';
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bull';
+import { OnQueueActive, OnQueueCompleted, OnQueueFailed, OnQueueStalled, Processor } from '@nestjs/bull';
+import { Logger } from '@nestjs/common';
+import type { Job } from 'bull';
 
-@Injectable()
+@Processor('audit-logs')
 export class GlobalQueueErrorHandler {
   private readonly logger = new Logger(GlobalQueueErrorHandler.name);
 
-  constructor(
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    @InjectQueue('audit-logs') private readonly queue: Queue,
-  ) {
-    // Error event
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    this.queue.on('error', (err: Error) => {
-      this.logger.error(err.message, err.stack);
-    });
+  @OnQueueFailed()
+  handleFailed(job: Job, err: Error) {
+    this.logger.error(`Job ${job.id} failed with error: ${err.message}`);
+  }
 
-    // Failed event
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    this.queue.on('failed', (job: Job, err: Error) => {
-      this.logger.error(
-        `Job ${job.id} (${job.name}) failed after ${job.attemptsMade}/${job.opts.attempts} attempts: ${err.message}`,
-        err.stack,
-      );
-    });
+  @OnQueueCompleted()
+  handleCompleted(job: Job, result: any) {
+    this.logger.log(`Job ${job.id} completed successfully`);
+  }
 
-    // Completed event
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    this.queue.on('completed', job => {
-      this.logger.debug(`Job ${job.id} (${job.name}) completed successfully`);
-    });
+  @OnQueueStalled()
+  handleStalled(job: Job) {
+    this.logger.warn(`Job ${job.id} has stalled`);
+  }
 
-    // Stalled event
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    this.queue.on('stalled', job => {
-      this.logger.warn(`Job ${job.id} (${job.name}) stalled`);
-    });
-
-    // Active event
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    this.queue.on('active', job => {
-      this.logger.debug(`Job ${job.id} (${job.name}) is now active`);
-    });
+  @OnQueueActive()
+  handleActive(job: Job) {
+    this.logger.log(`Job ${job.id} is now active`);
   }
 }
