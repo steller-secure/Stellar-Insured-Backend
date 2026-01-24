@@ -32,7 +32,9 @@ async function bootstrap(): Promise<void> {
   // Global exception filter
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // Enable shutdown hooks
+  // FIXED: Enable shutdown hooks. 
+  // This allows Nest to trigger onModuleDestroy() inside your QueueService automatically.
+  // This allows services (like QueueService) to run their OnModuleDestroy logic automatically
   app.enableShutdownHooks();
 
   // Swagger setup
