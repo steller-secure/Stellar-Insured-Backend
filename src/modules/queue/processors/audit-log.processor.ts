@@ -1,9 +1,10 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import type { Job } from 'bull'; // <--- FIX 1: Added 'type' (Fixes TS1272)
 import { AuditLogJobData } from '../interfaces/audit-log-job.interface';
 
-@Processor('audit-logs')
+// FIX 2: Changed 'audit-logs' to 'audit-log' to match your QueueModule registration
+@Processor('audit-log') 
 export class AuditLogProcessor {
   private readonly logger = new Logger(AuditLogProcessor.name);
 
@@ -17,7 +18,6 @@ export class AuditLogProcessor {
       );
 
       // Simulate audit log processing
-      // In production, this would persist to an audit log database or service
       const auditEntry = {
         userId,
         action,
@@ -32,10 +32,8 @@ export class AuditLogProcessor {
         timestamp,
       };
 
-      // Log the audit entry (in production, save to database or external service)
       this.logger.log(`Audit log processed: ${JSON.stringify(auditEntry)}`);
 
-      // Simulate processing time
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       this.logger.debug(

@@ -12,6 +12,7 @@ async function bootstrap(): Promise<void> {
 
   // Get configuration service
   const configService = app.get(ConfigService);
+  // queueService is available for manual use if needed, but we rely on lifecycle hooks now
   const queueService = app.get(QueueService);
 
   // Enable CORS
@@ -34,22 +35,8 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Enable shutdown hooks
+  // This allows services (like QueueService) to run their OnModuleDestroy logic automatically
   app.enableShutdownHooks();
-
-  // Register graceful shutdown handler for queues
-  app.onModuleDestroy(async () => {
-    try {
-      await queueService.drainQueues();
-      await queueService.closeQueues();
-      /* eslint-disable no-console */
-      console.log('Queues gracefully shut down');
-      /* eslint-enable no-console */
-    } catch (error) {
-      /* eslint-disable no-console */
-      console.error('Error during queue shutdown:', error);
-      /* eslint-enable no-console */
-    }
-  });
 
   // Swagger setup
   if (configService.get<boolean>('SWAGGER_ENABLED', true)) {

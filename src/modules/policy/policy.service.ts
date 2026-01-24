@@ -225,4 +225,23 @@ export class PolicyService {
     );
     return { policyId, status: 'cancelled' };
   }
-}
+  // ... existing code ...
+  // PASTE HERE (Inside the class)
+  async getUserStats(walletAddress: string) {
+    const policies = await this.policyRepository.find({ 
+      where: { 
+        // We query the relationship. TypeORM matches this to the User's ID.
+        user: { id: walletAddress } as any, 
+        status: PolicyStatus.ACTIVE 
+      },
+      // We must load the relation to access user details if needed, 
+      // but for ID filtering, the 'where' above is usually enough.
+    });
+
+    // Since 'coverageAmount' doesn't exist, we sum 'premium' as a fallback
+    // If you add a coverageAmount column later, change 'premium' to 'coverageAmount' here.
+    const totalValue = policies.reduce((sum, p) => sum + (Number(p.premium) || 0), 0);
+
+    return { activeCount: policies.length, totalValue };
+  }
+} // <--- The file must end with this closing brace

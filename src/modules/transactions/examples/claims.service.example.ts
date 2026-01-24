@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { QueryRunner } from 'typeorm';
+// FIX: Use 'import type' for QueryRunner to avoid TS1272
+import type { QueryRunner } from 'typeorm'; 
 import { FinancialOperationsService } from '../services/financial-operations.service';
 import { Transactional } from '../decorators/transactional.decorator';
 import { IsolationLevel, TransactionOptions } from '../types/transaction.types';
 
+// ... rest of the file remains exactly the same
 /**
  * Example: Claims Service using Transaction Management
  * Demonstrates how to integrate the transaction management module
@@ -67,7 +69,7 @@ export class ClaimsServiceExample {
   ) {
     // The queryRunner is passed automatically by the decorator
     // Use it to perform database operations within the transaction
-    const manager = queryRunner.manager;
+    const manager = queryRunner!.manager;
 
     // Example operations
     const updatedClaim = await manager.query(

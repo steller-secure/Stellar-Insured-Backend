@@ -22,7 +22,7 @@ export class Vote {
   @Index()
   proposalId: string;
 
-  @ManyToOne(() => Proposal, proposal => proposal.votes, {
+  @ManyToOne(() => Proposal, (proposal) => proposal.votes, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'proposal_id' })
@@ -32,7 +32,7 @@ export class Vote {
   @Index()
   userId: string;
 
-  @ManyToOne(() => User, user => user.votes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.votes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
@@ -47,8 +47,9 @@ export class Vote {
   })
   voteType: VoteType;
 
-  @Column({ name: 'transaction_hash', nullable: true })
-  transactionHash: string | null;
+  // FIX: Explicitly set type to 'varchar' so Postgres knows what to do
+  @Column({ name: 'transaction_hash', type: 'varchar', nullable: true })
+  transactionHash: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

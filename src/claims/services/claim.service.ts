@@ -203,4 +203,25 @@ export class ClaimService {
 
     return stats;
   }
-}
+  // PASTE THIS TO REPLACE THE BROKEN METHOD AT THE BOTTOM
+  async getUserStats(walletAddress: string) {
+    // 1. Pending Claims (Using your SUBMITTED status)
+    const pendingCount = await this.claimRepository.count({
+      where: { 
+        userId: walletAddress,        // Correct column name found in your file
+        status: ClaimStatus.SUBMITTED // Correct Enum usage
+      }
+    });
+
+    // 2. Settled Claims (Using APPROVED as "Settled")
+    // If you have a 'PAID' or 'SETTLED' status in your Enum, use that instead.
+    const settledCount = await this.claimRepository.count({
+      where: { 
+        userId: walletAddress, 
+        status: ClaimStatus.APPROVED 
+      }
+    });
+
+    return { pendingCount, settledCount };
+  }
+} // <--- Ensure this is the final closing brace of the class

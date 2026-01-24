@@ -21,6 +21,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { FilesController } from './modules/files/files.controller';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
     PaymentsModule,
     QueueModule,
     AuditLogModule,
+    DashboardModule,
   ],
   controllers: [AppController, FilesController],
   providers: [

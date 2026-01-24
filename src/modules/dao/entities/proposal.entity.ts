@@ -9,6 +9,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+// FIX: Changed from '../../../' to '../../' (Go up to 'src/modules', then into 'users')
 import { User } from '../../users/entities/user.entity';
 import { Vote } from './vote.entity';
 import { ProposalStatus } from '../enums/proposal-status.enum';
@@ -24,6 +25,12 @@ export class Proposal {
   @Column('text')
   description: string;
 
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, any>;
+
+  @Column({ name: 'submitter_wallet_address', length: 56, nullable: true })
+  submitterWalletAddress: string;
+
   @Column({
     type: 'enum',
     enum: ProposalStatus,
@@ -32,26 +39,26 @@ export class Proposal {
   @Index()
   status: ProposalStatus;
 
-  @Column({ name: 'start_date', type: 'timestamp' })
+  @Column({ name: 'start_date', type: 'timestamp', nullable: true })
   startDate: Date;
 
-  @Column({ name: 'end_date', type: 'timestamp' })
+  @Column({ name: 'end_date', type: 'timestamp', nullable: true })
   endDate: Date;
 
-  @Column({ name: 'on_chain_id', nullable: true })
+  @Column({ name: 'on_chain_id', type: 'varchar', nullable: true })
   onChainId: string | null;
 
-  @Column({ name: 'transaction_hash', nullable: true })
+  @Column({ name: 'transaction_hash', type: 'varchar', nullable: true })
   transactionHash: string | null;
 
-  @Column({ name: 'created_by_id' })
+  @Column({ name: 'created_by_id', nullable: true })
   createdById: string;
 
-  @ManyToOne(() => User, user => user.proposals, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.proposals, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'created_by_id' })
   createdBy: User;
 
-  @OneToMany(() => Vote, vote => vote.proposal)
+  @OneToMany(() => Vote, (vote) => vote.proposal)
   votes: Vote[];
 
   @CreateDateColumn({ name: 'created_at' })

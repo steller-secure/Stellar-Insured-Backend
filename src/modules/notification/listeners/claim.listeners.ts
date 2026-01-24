@@ -57,7 +57,8 @@ export class ClaimEventListeners {
       event.userId,
       event.claimId,
       'Claim Rejected',
-      `Your claim (ID: ${event.claimId}) has been rejected. Reason: ${event.reason}`,
+      // FIX: Use 'rejectionReason' instead of 'reason'
+      `Your claim (ID: ${event.claimId}) has been rejected. Reason: ${event.rejectionReason}`,
     );
   }
 
@@ -71,7 +72,8 @@ export class ClaimEventListeners {
       event.userId,
       event.claimId,
       'Claim Settled',
-      `Your claim (ID: ${event.claimId}) has been settled. Amount: $${event.amount.toFixed(2)}`,
+      // FIX: Use 'settlementAmount' instead of 'amount'
+      `Your claim (ID: ${event.claimId}) has been settled. Amount: $${event.settlementAmount.toFixed(2)}`,
     );
   }
 }

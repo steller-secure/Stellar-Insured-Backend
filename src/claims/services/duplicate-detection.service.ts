@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan, IsNull } from 'typeorm'; // <--- Added MoreThan, IsNull
 import { Claim } from '../entities/claim.entity';
 import { DuplicateClaimCheck } from '../entities/duplicate-claim-check.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,7 +9,9 @@ export class DuplicateDetectionService {
   private readonly logger = new Logger(DuplicateDetectionService.name);
 
   constructor(
+    @InjectRepository(Claim)
     private claimRepository: Repository<Claim>,
+    @InjectRepository(DuplicateClaimCheck)
     private duplicateCheckRepository: Repository<DuplicateClaimCheck>,
   ) {}
 
@@ -155,7 +157,8 @@ export class DuplicateDetectionService {
     const recentClaim = await this.claimRepository.findOne({
       where: {
         policyId,
-        createdAt: () => `createdAt > '${twentyFourHoursAgo.toISOString()}'`,
+        // FIX 1: Use MoreThan() operator instead of raw function
+        createdAt: MoreThan(twentyFourHoursAgo),
       },
       order: { createdAt: 'DESC' },
     });
@@ -260,7 +263,8 @@ export class DuplicateDetectionService {
   async getUnresolvedDuplicates(): Promise<DuplicateClaimCheck[]> {
     return this.duplicateCheckRepository.find({
       where: {
-        resolvedAt: null,
+        // FIX 2: Use IsNull() operator instead of null
+        resolvedAt: IsNull(),
         isFalsePositive: false,
       },
       order: { createdAt: 'DESC' },

@@ -9,8 +9,9 @@ import {
   MaxLength,
   Max,
   Min,
-  Type,
+  // Type removed from here
 } from 'class-validator';
+import { Type } from 'class-transformer'; // <--- Added correct import
 import { ClaimType } from '../entities/claim.entity';
 
 export class CreateClaimDto {

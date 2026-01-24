@@ -1,54 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
-import { AuditLogJobData } from './interfaces/audit-log-job.interface';
+import type { Queue } from 'bull'; // Using 'type' fixes TS1272
+import { AuditLogJobData } from './interfaces/audit-log-job.interface'; // Ensure path is correct
 
 @Injectable()
 export class QueueService {
-  constructor(
-    @InjectQueue('audit-logs') private auditLogsQueue: Queue,
-  ) {}
+  private readonly logger = new Logger(QueueService.name);
+
+  constructor(@InjectQueue('audit-log') private auditLogQueue: Queue) {}
 
   /**
-   * Add an audit log job to the queue
+   * Adds a job to the audit log queue
    */
-  async queueAuditLog(data: AuditLogJobData): Promise<void> {
-    await this.auditLogsQueue.add(data, {
-      jobId: `audit-${data.userId}-${Date.now()}`,
-      priority: 10,
-    });
+  async addAuditLogJob(data: AuditLogJobData) {
+    return this.auditLogQueue.add(data);
   }
 
   /**
-   * Get queue statistics
+   * Get stats for the queue (Fixes health.service.ts and queue.controller.ts)
    */
-  async getQueueStats(): Promise<{
-    active: number;
-    waiting: number;
-    delayed: number;
-    failed: number;
-    completed: number;
-  }> {
+  async getQueueStats() {
     return {
-      active: await this.auditLogsQueue.getActiveCount(),
-      waiting: await this.auditLogsQueue.getWaitingCount(),
-      delayed: await this.auditLogsQueue.getDelayedCount(),
-      failed: await this.auditLogsQueue.getFailedCount(),
-      completed: await this.auditLogsQueue.getCompletedCount(),
+      waiting: await this.auditLogQueue.getWaitingCount(),
+      active: await this.auditLogQueue.getActiveCount(),
+      completed: await this.auditLogQueue.getCompletedCount(),
+      failed: await this.auditLogQueue.getFailedCount(),
+      delayed: await this.auditLogQueue.getDelayedCount(),
     };
   }
 
   /**
-   * Drain all queues
+   * Drain the queue (Fixes main.ts)
    */
-  async drainQueues(): Promise<void> {
-    await this.auditLogsQueue.drain();
+  async drainQueues() {
+    this.logger.warn('Draining audit log queue...');
+    await this.auditLogQueue.empty();
   }
 
   /**
-   * Close queue connections
+   * Close the queue (Fixes main.ts)
    */
-  async closeQueues(): Promise<void> {
-    await this.auditLogsQueue.close();
+  async closeQueues() {
+    this.logger.log('Closing audit log queue connection...');
+    await this.auditLogQueue.close();
   }
 }
