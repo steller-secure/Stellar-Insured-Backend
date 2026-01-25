@@ -139,7 +139,7 @@ export class PolicyService {
         event = new PolicyRenewedEvent(policyId, userId);
         break;
       case PolicyTransitionAction.EXPIRE:
-        event = new PolicyExpiredEvent(policyId);
+        event = new PolicyExpiredEvent(policyId, 'system');
         break;
       case PolicyTransitionAction.CANCEL:
         event = new PolicyCancelledEvent(policyId, userId, reason);

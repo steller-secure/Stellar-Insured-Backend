@@ -4,7 +4,7 @@ import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { DaoService } from './dao.service';
 import { Proposal } from './entities/proposal.entity';
 import { Vote } from './entities/vote.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserStatus, UserRole, SignupSource } from '../users/entities/user.entity';
 import { ProposalStatus } from './enums/proposal-status.enum';
 import { VoteType } from './enums/vote-type.enum';
 import { CreateProposalDto, CastVoteDto } from './dto';
@@ -24,15 +24,22 @@ describe('DaoService', () => {
 
   const mockUser: User = {
     id: 'user-uuid',
+    walletAddress: 'GBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
     email: 'test@example.com',
-    passwordHash: 'hashed-password',
-    stellarAddress: 'GBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    isActive: true,
-    isVerified: false,
+    status: UserStatus.ACTIVE,
+    roles: [UserRole.USER],
+    signupSource: SignupSource.ORGANIC,
+    isEmailVerified: false,
+    isWalletVerified: false,
+    kycVerified: false,
+    twoFactorEnabled: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     votes: [],
     proposals: [],
+    policies: [],
+    claims: [],
+    payments: [],
   };
 
   const mockProposal: Proposal = {
@@ -185,7 +192,7 @@ describe('DaoService', () => {
         proposal: mockProposal,
         userId: mockUser.id,
         user: mockUser,
-        walletAddress: mockUser.stellarAddress!,
+        walletAddress: mockUser.walletAddress,
         voteType: VoteType.FOR,
         transactionHash: null,
         createdAt: new Date(),
@@ -293,7 +300,7 @@ describe('DaoService', () => {
         proposal: mockProposal,
         userId: mockUser.id,
         user: mockUser,
-        walletAddress: mockUser.stellarAddress!,
+        walletAddress: mockUser.walletAddress,
         voteType: VoteType.FOR,
         transactionHash: null,
         createdAt: new Date(),

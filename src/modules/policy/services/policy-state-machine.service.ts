@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 import { PolicyStatus } from '../enums/policy-status.enum';
 import { PolicyTransitionAction } from '../enums/policy-transition-action.enum';
+import { PolicyAuditEntry, PolicyStateChangeEvent } from '../types/policy-transition.types';
 import * as Exceptions from '../exceptions/policy.exceptions';
 
 @Injectable()
@@ -35,11 +37,42 @@ export class PolicyStateMachineService {
     }
   }
 
-  executeTransition(currentStatus: PolicyStatus, action: PolicyTransitionAction, userRoles: string | string[], reason?: string) {
+  executeTransition(
+    currentStatus: PolicyStatus,
+    action: PolicyTransitionAction,
+    userId: string,
+    userRoles: string[],
+    policyId: string,
+    reason?: string,
+  ): { auditEntry: PolicyAuditEntry; stateChangeEvent: PolicyStateChangeEvent } {
     const transition = this.validateTransition(currentStatus, action);
     this.validatePermission(transition, userRoles);
     this.validateReason(transition, reason);
-    return { ...transition, timestamp: new Date(), reason };
+
+    const timestamp = new Date();
+
+    const auditEntry: PolicyAuditEntry = {
+      id: uuidv4(),
+      policyId,
+      fromStatus: currentStatus,
+      toStatus: transition.to,
+      action,
+      transitionedBy: userId,
+      reason,
+      timestamp,
+    };
+
+    const stateChangeEvent: PolicyStateChangeEvent = {
+      policyId,
+      previousStatus: currentStatus,
+      newStatus: transition.to,
+      action,
+      transitionedBy: userId,
+      reason,
+      timestamp,
+    };
+
+    return { auditEntry, stateChangeEvent };
   }
 
   // FIXED: Stronger terminal check to ensure ARCHIVED returns 0 transitions

@@ -5,6 +5,6 @@ export class PolicyCancelledEvent {
   constructor(
     public readonly policyId: string,
     public readonly userId: string,
-    public readonly reason: string,
+    public readonly reason?: string,
   ) {}
 }

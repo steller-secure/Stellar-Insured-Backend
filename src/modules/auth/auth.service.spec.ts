@@ -39,7 +39,7 @@ describe('SignupAuthService', () => {
       expect(result).toBeDefined();
       expect(result.walletAddress).toBe(signupDto.walletAddress);
       expect(result.email).toBe(signupDto.email);
-      expect(result.role).toBe(UserRole.USER);
+      expect(result.roles).toContain(UserRole.USER);
       expect(result.id).toBeDefined();
       expect(result.createdAt).toBeDefined();
     });
@@ -161,9 +161,11 @@ describe('SignupAuthService', () => {
       const user1 = await service.getUserById(result1.id);
       const user2 = await service.getUserById(result2.id);
 
-      expect(user1.referralCode).toBeDefined();
-      expect(user2.referralCode).toBeDefined();
-      expect(user1.referralCode).not.toBe(user2.referralCode);
+      expect(user1).toBeDefined();
+      expect(user2).toBeDefined();
+      expect(user1!.referralCode).toBeDefined();
+      expect(user2!.referralCode).toBeDefined();
+      expect(user1!.referralCode).not.toBe(user2!.referralCode);
     });
   });
 
@@ -223,8 +225,8 @@ describe('SignupAuthService', () => {
       const user = await service.getUserById(signupResult.id);
 
       expect(user).toBeDefined();
-      expect(user.id).toBe(signupResult.id);
-      expect(user.walletAddress).toBe(signupDto.walletAddress);
+      expect(user!.id).toBe(signupResult.id);
+      expect(user!.walletAddress).toBe(signupDto.walletAddress);
     });
 
     it('should return null for non-existent user', async () => {

@@ -3,6 +3,7 @@ export enum PolicyTransitionAction {
   APPROVE = 'APPROVE',
   REJECT = 'REJECT',
   ACTIVATE = 'ACTIVATE',
+  ISSUE = 'ISSUE',
   SUSPEND = 'SUSPEND',
   RESUME = 'RESUME',
   RENEW = 'RENEW',

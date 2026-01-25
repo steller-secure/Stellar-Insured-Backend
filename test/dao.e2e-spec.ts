@@ -7,7 +7,7 @@ import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User } from '../src/modules/users/entities/user.entity';
+import { User, UserStatus, UserRole, SignupSource } from '../src/modules/users/entities/user.entity';
 import { Proposal } from '../src/modules/dao/entities/proposal.entity';
 import { Vote } from '../src/modules/dao/entities/vote.entity';
 import { ProposalStatus } from '../src/modules/dao/enums/proposal-status.enum';
@@ -103,17 +103,26 @@ describe('DAO Module (e2e)', () => {
     const passwordHash = await bcrypt.hash('TestPassword123!', 10);
 
     testUser = await userRepository.save({
+      walletAddress: 'GBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
       email: 'testuser@example.com',
-      passwordHash,
-      stellarAddress:
-        'GBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-      isActive: true,
+      status: UserStatus.ACTIVE,
+      roles: [UserRole.USER],
+      signupSource: SignupSource.ORGANIC,
+      isEmailVerified: false,
+      isWalletVerified: true,
+      kycVerified: false,
+      twoFactorEnabled: false,
     });
 
     testUserWithoutWallet = await userRepository.save({
       email: 'nowallet@example.com',
-      passwordHash,
-      isActive: true,
+      status: UserStatus.ACTIVE,
+      roles: [UserRole.USER],
+      signupSource: SignupSource.ORGANIC,
+      isEmailVerified: false,
+      isWalletVerified: false,
+      kycVerified: false,
+      twoFactorEnabled: false,
     });
 
     // Generate JWT tokens
@@ -148,7 +157,7 @@ describe('DAO Module (e2e)', () => {
 
       expect(response.body).toHaveProperty('id');
       expect(response.body.voteType).toBe(VoteType.FOR);
-      expect(response.body.walletAddress).toBe(testUser.stellarAddress);
+      expect(response.body.walletAddress).toBe(testUser.walletAddress);
       expect(response.body.proposalId).toBe(testProposal.id);
     });
 
@@ -276,17 +285,18 @@ describe('DAO Module (e2e)', () => {
 
     it('should return aggregated results with votes', async () => {
       // Create multiple users with wallets and cast votes
-      const users = [];
+      const users: User[] = [];
       for (let i = 0; i < 12; i++) {
         const user = await userRepository.save({
+          walletAddress: `GBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX${i.toString().padStart(2, '0')}`.slice(0, 56),
           email: `voter${i}@example.com`,
-          passwordHash: await bcrypt.hash('TestPassword123!', 10),
-          stellarAddress:
-            `GBXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX${i.toString().padStart(2, '0')}`.slice(
-              0,
-              56,
-            ),
-          isActive: true,
+          status: UserStatus.ACTIVE,
+          roles: [UserRole.USER],
+          signupSource: SignupSource.ORGANIC,
+          isEmailVerified: false,
+          isWalletVerified: true,
+          kycVerified: false,
+          twoFactorEnabled: false,
         });
         users.push(user);
       }
@@ -302,7 +312,7 @@ describe('DAO Module (e2e)', () => {
         await voteRepository.save({
           proposalId: testProposal.id,
           userId: users[i].id,
-          walletAddress: users[i].stellarAddress!,
+          walletAddress: users[i].walletAddress,
           voteType: voteTypes[i],
         });
       }
