@@ -73,6 +73,77 @@ export class AppConfigService {
     return this.configService.get<string>('DATABASE_NAME', 'stellar_insured');
   }
 
+  // Database SSL Configuration
+  get databaseSslEnabled(): boolean {
+    return this.configService.get<boolean>('DATABASE_SSL_ENABLED', !this.isDevelopment);
+  }
+
+  get databaseSslRejectUnauthorized(): boolean {
+    return this.configService.get<boolean>('DATABASE_SSL_REJECT_UNAUTHORIZED', this.isProduction);
+  }
+
+  get databaseSslCa(): string | undefined {
+    return this.configService.get<string>('DATABASE_SSL_CA');
+  }
+
+  get databaseSslCert(): string | undefined {
+    return this.configService.get<string>('DATABASE_SSL_CERT');
+  }
+
+  get databaseSslKey(): string | undefined {
+    return this.configService.get<string>('DATABASE_SSL_KEY');
+  }
+
+  // Database Connection Pool Configuration
+  get databasePoolMin(): number {
+    return this.configService.get<number>('DATABASE_POOL_MIN', 2);
+  }
+
+  get databasePoolMax(): number {
+    return this.configService.get<number>('DATABASE_POOL_MAX', 10);
+  }
+
+  get databasePoolIdleTimeout(): number {
+    return this.configService.get<number>('DATABASE_POOL_IDLE_TIMEOUT', 30000);
+  }
+
+  get databasePoolConnectionTimeout(): number {
+    return this.configService.get<number>('DATABASE_POOL_CONNECTION_TIMEOUT', 2000);
+  }
+
+  // Database Retry Configuration
+  get databaseRetryAttempts(): number {
+    return this.configService.get<number>('DATABASE_RETRY_ATTEMPTS', 3);
+  }
+
+  get databaseRetryDelay(): number {
+    return this.configService.get<number>('DATABASE_RETRY_DELAY', 1000);
+  }
+
+  get databaseMaxRetryDelay(): number {
+    return this.configService.get<number>('DATABASE_MAX_RETRY_DELAY', 30000);
+  }
+
+  // Database Logging Configuration
+  get databaseLogging(): boolean | 'all' | Array<'query' | 'error' | 'schema' | 'warn' | 'info' | 'log' | 'migration'> {
+    const loggingConfig = this.configService.get<string>('DATABASE_LOGGING');
+
+    if (!loggingConfig) {
+      // Default: minimal logging in production, all in development
+      return this.isDevelopment ? 'all' : ['error', 'warn', 'migration'];
+    }
+
+    if (loggingConfig === 'true') return true;
+    if (loggingConfig === 'false') return false;
+    if (loggingConfig === 'all') return 'all';
+
+    return loggingConfig.split(',') as Array<'query' | 'error' | 'schema' | 'warn' | 'info' | 'log' | 'migration'>;
+  }
+
+  get databaseMaxQueryExecutionTime(): number {
+    return this.configService.get<number>('DATABASE_MAX_QUERY_EXECUTION_TIME', 1000);
+  }
+
   // Redis Configuration
   get redisUrl(): string {
     return this.configService.get<string>(
