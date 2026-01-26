@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-// FIX: Go up 2 levels to 'src', then into 'modules'
-import { QueueModule } from '../../modules/../modules/queue/queue.module'; 
-// FIX: Go up 1 level to 'common', then into 'services'
-import { AuditLogService } from '../services./services/audit-log.service';
+import { QueueModule } from '../../modules/queue/queue.module';
+import { AuditLogService } from '../services/audit-log.service';
+import { ClaimAuditLogListener } from '../listeners/claim-audit-log.listener';
+import { QueueModule } from '../../modules/queue';
+import { AuditLogService } from '../services/audit-log.service';
 
 @Module({
   imports: [QueueModule],

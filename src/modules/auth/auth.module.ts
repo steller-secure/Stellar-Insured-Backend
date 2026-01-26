@@ -4,18 +4,23 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule } from '../../config/config.module';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { AppConfigService } from '../../config/app-config.service';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { WalletService } from './services/wallet.service';
+import { PermissionService } from 'src/permissions/permission.service';
+import { PermissionGuard } from 'src/permissions/permission.guard';
+
+// 🔹 New imports for permissions
+
 
 @Module({
   imports: [
     UsersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    ConfigModule,
+    NestConfigModule,
     CacheModule.register(),
     ThrottlerModule.forRoot([
       {
@@ -24,16 +29,31 @@ import { WalletService } from './services/wallet.service';
       },
     ]),
     JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: AppConfigService) => ({
+      imports: [NestConfigModule],
+      useFactory: (configService: AppConfigService) => ({
         secret: configService.jwtSecret,
         signOptions: { expiresIn: configService.jwtExpiresIn as any },
       }),
       inject: [AppConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, WalletService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    WalletService,
+
+    // 🔹 Add permission service and guard here
+    PermissionService,
+    PermissionGuard,
+  ],
   controllers: [AuthController],
-  exports: [AuthService, JwtStrategy, PassportModule],
+  exports: [
+    AuthService,
+    JwtStrategy,
+    PassportModule,
+
+    // 🔹 Export PermissionService so it can be injected in other modules if needed
+    PermissionService,
+  ],
 })
 export class AuthModule {}

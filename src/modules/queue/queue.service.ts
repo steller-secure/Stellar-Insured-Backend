@@ -5,9 +5,11 @@ import { AuditLogJobData } from './interfaces/audit-log-job.interface'; // Ensur
 
 @Injectable()
 export class QueueService implements OnModuleDestroy {
-  private readonly logger = new Logger(QueueService.name);
-
-  constructor(@InjectQueue('audit-log') private auditLogQueue: Queue) {}
+  constructor(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    @InjectQueue('audit-logs')
+    private readonly auditLogsQueue: Queue<AuditLogJobData>,
+  ) {}
 
   /**
    * Automatically triggered by NestJS shutdown hooks

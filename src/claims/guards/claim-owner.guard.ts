@@ -7,6 +7,13 @@ import {
 } from '@nestjs/common';
 import { ClaimsService } from '../../modules/claims/claims.service';
 
+// Extend Express Request to include the authenticated user
+interface AuthenticatedRequest extends Request {
+  user: {
+    id: string;
+  };
+}
+
 @Injectable()
 export class ClaimOwnerGuard implements CanActivate {
   constructor(private readonly claimService: ClaimsService) {}

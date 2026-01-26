@@ -15,6 +15,7 @@ import { Type } from 'class-transformer'; // <--- Added correct import
 // FIXED: Type must be imported from class-transformer
 import { Type } from 'class-transformer';
 import { ClaimType } from '../entities/claim.entity';
+import { Type } from 'class-transformer';
 
 export class CreateClaimDto {
   @IsUUID()

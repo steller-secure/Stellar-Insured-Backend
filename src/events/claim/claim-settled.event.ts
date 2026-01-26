@@ -6,5 +6,7 @@ export class ClaimSettledEvent {
     public readonly claimId: string,
     public readonly userId: string,
     public readonly amount: number,
+    public readonly settledBy?: string,
+    public readonly settlementAmount?: number,
   ) {}
 }

@@ -15,6 +15,8 @@ import { ClaimService } from '../services/claim.service';
 import { CreateClaimDto } from '../dto/create-claim.dto';
 import { Claim, ClaimStatus } from '../entities/claim.entity';
 import { ClaimOwnerGuard } from '../guards/claim-owner.guard';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { PermissionGuard } from 'src/permissions/permission.guard';
 
 @Controller('claims')
 export class ClaimController {
@@ -148,4 +150,10 @@ export class ClaimController {
   }> {
     return this.claimService.getPolicyClaimStats(policyId);
   }
+  
+  // src/claims/claims.controller.ts
+@UseGuards(JwtAuthGuard, PermissionGuard)
+@Post(':id/approve')
+approveClaim() {}
+
 }

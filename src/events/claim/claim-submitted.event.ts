@@ -6,5 +6,6 @@ export class ClaimSubmittedEvent {
     public readonly claimId: string,
     public readonly userId: string,
     public readonly policyId: string,
+    public readonly claimAmount?: number,
   ) {}
 }

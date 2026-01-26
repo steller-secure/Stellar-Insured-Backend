@@ -7,17 +7,20 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:prod": "nest build --webpack",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "nest start -b tsc --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "benchmark:before": "node scripts/benchmark.js && mv benchmark-results.json benchmark-before.json",
+    "benchmark:after": "node scripts/benchmark.js && mv benchmark-results.json benchmark-after.json"
   },
   "dependencies": {
     "@nestjs/bull": "^11.0.4",
@@ -73,15 +76,18 @@
     "globals": "^16.0.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
+    "run-script-webpack-plugin": "^0.2.3",
     "source-map-support": "^0.5.21",
     "sqlite3": "^5.1.7",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
-    "ts-loader": "^9.5.2",
+    "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "webpack": "^5.104.1",
+    "webpack-node-externals": "^3.0.0"
   },
   "jest": {
     "moduleFileExtensions": [

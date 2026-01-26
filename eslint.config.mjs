@@ -6,7 +6,18 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: [
+      'eslint.config.mjs',
+      'benchmark.js',
+      'benchmark*.js',
+      'scripts/**/*.js',
+      'webpack.config.js',
+      'dist/**',
+      'node_modules/**',
+      '.webpack_cache/**',
+      '*.js',
+      'benchmark-*.json',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -36,6 +47,16 @@ export default tseslint.config(
       'prefer-const': 'error',
       'no-console': 'warn',
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
+    },
+  },
+  {
+    files: ['**/*.module.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
   },
 );

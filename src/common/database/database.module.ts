@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '../../config/config.module';
 import { AppConfigService } from '../../config/app-config.service';
+import { ConfigModule } from 'src/config/config.module';
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { AppConfigService } from '../../config/app-config.service';
         password: configService.databasePassword,
         database: configService.databaseName,
         autoLoadEntities: true,
-        synchronize: configService.isDevelopment, // Only for development
+        synchronize: configService.isDevelopment,
         logging: configService.isDevelopment,
       }),
       inject: [AppConfigService],

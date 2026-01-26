@@ -3,15 +3,17 @@ import { Logger } from '@nestjs/common';
 import type type { Job } from 'bull'; // <--- FIX 1: Added 'type' (Fixes TS1272)
 import { AuditLogJobData } from '../interfaces/audit-log-job.interface';
 
-// FIX 2: Changed 'audit-logs' to 'audit-log' to match your QueueModule registration
-@Processor('audit-log') 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+@Processor('audit-logs')
 export class AuditLogProcessor {
   private readonly logger = new Logger(AuditLogProcessor.name);
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   @Process()
   async processAuditLog(job: Job<AuditLogJobData>): Promise<void> {
     try {
-      const { userId, action, entity, entityId, changes, metadata, timestamp } = job.data;
+      const { userId, action, entity, entityId, changes, metadata, timestamp } =
+        job.data;
 
       this.logger.debug(
         `Processing audit log: User ${userId} performed ${action} on ${entity}:${entityId}`,
@@ -34,16 +36,12 @@ export class AuditLogProcessor {
 
       this.logger.log(`Audit log processed: ${JSON.stringify(auditEntry)}`);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      this.logger.debug(
-        `Audit log successfully processed for job ${job.id}`,
-      );
+      this.logger.debug(`Audit log successfully processed for job ${job.id}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to process audit log: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to process audit log: ${error}`, error);
       throw error;
     }
   }

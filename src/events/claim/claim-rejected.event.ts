@@ -6,5 +6,7 @@ export class ClaimRejectedEvent {
     public readonly claimId: string,
     public readonly userId: string,
     public readonly reason: string,
+    public readonly rejectedBy?: string,
+    public readonly rejectionReason?: string,
   ) {}
 }

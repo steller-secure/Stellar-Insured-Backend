@@ -3,6 +3,33 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": false,
+    "webpack": true,
+    "webpackConfigPath": "webpack.config.js",
+    "typeCheck": false,
+    "watchAssets": true,
+    "assets": [
+      {
+        "include": "**/*.proto",
+        "watchAssets": true
+      },
+      {
+        "include": "**/*.graphql",
+        "watchAssets": true
+      }
+    ],
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": false,
+          "introspectComments": true
+        }
+      }
+    ]
+  },
+  "generateOptions": {
+    "spec": true,
+    "flat": false
   }
 }
