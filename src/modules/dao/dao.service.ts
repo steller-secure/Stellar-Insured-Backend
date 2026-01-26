@@ -138,7 +138,7 @@ export class DaoService {
     const walletAddress = user.walletAddress;
 
     // Use a transaction with pessimistic locking to prevent race conditions
-    return this.dataSource.transaction(async manager => {
+    return this.dataSource.transaction(async (manager) => {
       // Lock the proposal row to prevent concurrent modifications
       const proposal = await manager.findOne(Proposal, {
         where: { id: proposalId },
@@ -264,7 +264,10 @@ export class DaoService {
     };
   }
 
-  async activateProposal(id: string, _user: User): Promise<ProposalResponseDto> {
+  async activateProposal(
+    id: string,
+    _user: User,
+  ): Promise<ProposalResponseDto> {
     const proposal = await this.proposalRepository.findOne({
       where: { id },
     });
@@ -296,6 +299,37 @@ export class DaoService {
       createdById: proposal.createdById,
       createdAt: proposal.createdAt,
       updatedAt: proposal.updatedAt,
+    };
+  }
+
+  /**
+   * Retrieves all votes cast by a specific wallet address.
+   * Used by the Dashboard to show user activity.
+   */
+  async getVotingHistory(walletAddress: string): Promise<Vote[]> {
+    return this.voteRepository.find({
+      where: { walletAddress },
+      order: { createdAt: 'DESC' }, // Show most recent votes first
+    });
+  }
+
+  // 👇 THIS IS THE MISSING METHOD THAT DASHBOARD NEEDS 👇
+  async getUserVotingStats(
+    walletAddress: string,
+  ): Promise<{ activeProposals: number; userVotes: number }> {
+    // 1. Get count of all active proposals
+    const activeProposalsCount = await this.proposalRepository.count({
+      where: { status: ProposalStatus.ACTIVE },
+    });
+
+    // 2. Get count of votes cast by this specific wallet
+    const userVotesCount = await this.voteRepository.count({
+      where: { walletAddress },
+    });
+
+    return {
+      activeProposals: activeProposalsCount,
+      userVotes: userVotesCount,
     };
   }
 }

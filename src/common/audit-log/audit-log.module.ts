@@ -7,7 +7,7 @@ import { AuditLogService } from '../services/audit-log.service';
 
 @Module({
   imports: [QueueModule],
-  providers: [AuditLogService, ClaimAuditLogListener],
+  providers: [AuditLogService],
   exports: [AuditLogService],
 })
 export class AuditLogModule {}

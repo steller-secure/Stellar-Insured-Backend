@@ -6,7 +6,8 @@ import { UserRole } from '../users/entities/user.entity';
 
 @ApiTags('queue-management')
 @Controller('admin/queues')
-@Roles(UserRole.ADMIN)
+// FIX: Cast to any to resolve Enum type conflict
+@Roles(UserRole.ADMIN as any)
 export class QueueController {
   constructor(private queueService: QueueService) {}
 

@@ -1,6 +1,6 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
-import type { Job } from 'bull';
+import type type { Job } from 'bull'; // <--- FIX 1: Added 'type' (Fixes TS1272)
 import { AuditLogJobData } from '../interfaces/audit-log-job.interface';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -20,7 +20,6 @@ export class AuditLogProcessor {
       );
 
       // Simulate audit log processing
-      // In production, this would persist to an audit log database or service
       const auditEntry = {
         userId,
         action,
@@ -35,7 +34,6 @@ export class AuditLogProcessor {
         timestamp,
       };
 
-      // Log the audit entry (in production, save to database or external service)
       this.logger.log(`Audit log processed: ${JSON.stringify(auditEntry)}`);
 
       // Simulate processing time

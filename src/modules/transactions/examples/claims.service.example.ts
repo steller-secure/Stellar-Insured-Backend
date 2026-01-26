@@ -243,12 +243,14 @@
 //  */
 
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-import type { QueryRunner } from 'typeorm'; // Separate the type import
+// FIX: Use 'import type' for QueryRunner to avoid TS1272
+import type { DataSource } from 'typeorm';
+import type { QueryRunner } from 'typeorm';  // Separate the type import
 import { FinancialOperationsService } from '../services/financial-operations.service';
 import { Transactional } from '../decorators/transactional.decorator';
 import { IsolationLevel, TransactionOptions } from '../types/transaction.types';
 
+// ... rest of the file remains exactly the same
 /**
  * Example: Claims Service using Transaction Management
  * Demonstrates how to integrate the transaction management module
@@ -308,7 +310,7 @@ export class ClaimsServiceExample {
   ) {
     // FIXED: Use the queryRunner's manager if it exists, otherwise fallback to the global manager
     // This ensures 'manager' is never undefined
-    const manager = queryRunner ? queryRunner.manager : this.dataSource.manager;
+    const manager = queryRunner! ? queryRunner.manager : this.dataSource.manager;
 
     // Example operations
     await manager.query(

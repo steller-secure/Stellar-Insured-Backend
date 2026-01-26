@@ -27,6 +27,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { FilesController } from './modules/files/files.controller';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -87,7 +88,7 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
     PaymentsModule,
     QueueModule,
     AuditLogModule,
-    AuditModule,
+    DashboardModule,
   ],
   controllers: [AppController, FilesController],
   providers: [

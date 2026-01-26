@@ -22,32 +22,27 @@ export class ClaimOwnerGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
     
-    // Extract claimId from params
-    const params = request.params;
-    const rawClaimId = params.id || params.claimId;
+    // FIX: Handle potential array param
+    const rawId = request.params.id;
+    const claimId = Array.isArray(rawId) ? rawId[0] : rawId;
 
-    if (!rawClaimId) {
-      throw new NotFoundException('Claim ID not provided');
+    if (!claimId || !user) {
+      return false;
     }
 
-    // FIXED: Ensure claimId is a string, not a string[]
-    const claimId = Array.isArray(rawClaimId) ? rawClaimId[0] : rawClaimId;
-
-    const claim = await this.claimService.findOne(claimId);
+    // Now 'claimId' is guaranteed to be a string
+    const claim = await this.claimService.getClaimById(claimId);
 
     if (!claim) {
-      throw new NotFoundException(`Claim with ID ${claimId} not found`);
+      return false; // Or throw NotFoundException
     }
 
-    // Check if the authenticated user is the owner of the claim
-    // or if the user has an admin role
-    const isOwner = claim.userId === user.id;
-    const isAdmin = user.role === 'admin';
-
-    if (!isOwner && !isAdmin) {
-      throw new ForbiddenException('You do not have permission to access this claim');
+    // Allow if user is admin or the owner
+    // Note: Adjust 'user.role' access based on your User entity structure
+    if (user.role === 'admin') { 
+        return true; 
     }
 
-    return true;
+    return claim.userId === user.id;
   }
 }

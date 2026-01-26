@@ -1,17 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { AppValidationPipe } from './common/pipes/validation.pipe';
+import { QueueService } from './modules/queue/queue.service';
 import helmet from 'helmet';
-import { AppConfigService } from './config/app-config.service';
-import { Logger } from '@nestjs/common';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   // Get configuration service
   const configService = app.get(ConfigService);
+  // queueService is available for manual use if needed, but we rely on lifecycle hooks now
+  const queueService = app.get(QueueService);
 
   // Enable CORS
   const corsOrigin = configService.get<string>('CORS_ORIGIN');
@@ -32,8 +34,8 @@ async function bootstrap(): Promise<void> {
   // Global exception filter
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // FIXED: Enable shutdown hooks. 
-  // This allows Nest to trigger onModuleDestroy() inside your QueueService automatically.
+  // Enable shutdown hooks
+  // This allows services (like QueueService) to run their OnModuleDestroy logic automatically
   app.enableShutdownHooks();
 
   // Swagger setup
@@ -53,40 +55,10 @@ async function bootstrap(): Promise<void> {
     );
   }
 
-    // Get port from config - Use typed getter
-    const port = configService.port;
-    logger.log(`📡 Attempting to start server on port ${port}...`);
+  // Get port from config
+  const port = configService.get<number>('PORT', 4000);
 
-    await app.listen(port);
-
-    // Success message
-    logger.log(`\n🎉 ==========================================`);
-    logger.log(`🚀 ${configService.appName} v${configService.appVersion}`);
-    logger.log(`🌍 Running on: http://localhost:${port}`);
-    logger.log(`📊 Environment: ${configService.nodeEnv}`);
-    logger.log(
-      `📋 Swagger UI: http://localhost:${port}${configService.swaggerPath}`,
-    );
-    logger.log(`⚡ Health check: http://localhost:${port}/health`);
-    logger.log(`🔗 Stellar Network: ${configService.stellarNetwork}`);
-    logger.log(
-      `💾 Database: ${configService.databaseHost}:${configService.databasePort}`,
-    );
-    logger.log(
-      `🔄 Redis: ${configService.redisHost}:${configService.redisPort}`,
-    );
-    logger.log(`==========================================\n`);
-  } catch (error) {
-    logger.error('❌ Failed to bootstrap application:', error);
-
-    // Log the full error stack
-    if (error instanceof Error) {
-      logger.error(`Error name: ${error.name}`);
-      logger.error(`Error message: ${error.message}`);
-      logger.error(`Error stack: ${error.stack}`);
-    } else {
-      logger.error(`Unknown error: ${JSON.stringify(error)}`);
-    }
+  await app.listen(port);
 
   // Log startup information
   /* eslint-disable no-console */

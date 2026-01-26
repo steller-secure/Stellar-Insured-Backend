@@ -1,10 +1,9 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
-import { ConfigModule } from '../../config/config.module'; // Adjusted to match your previous app.module imports
-import { AppConfigService } from '../../config/app-config.service';
+import { ConfigModule, ConfigService } from '../../config/config.module'; // Adjusted to match your previous app.module imports
 import { QueueService } from './queue.service';
-import { QueueController } from './queue.controller';
 import { AuditLogProcessor } from './processors/audit-log.processor';
+import { QueueController } from './queue.controller';
 import { GlobalQueueErrorHandler } from './global-queue-error.handler';
 import { QueueList } from './queue.config';
 
@@ -13,16 +12,16 @@ import { QueueList } from './queue.config';
     // 1. Configure Bull with proper typing
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: AppConfigService) => ({
+      useFactory: async (configService: ConfigService) => ({
         redis: {
-          // Removed the <type> generics to fix the TS2558 errors
-          host: configService.get('REDIS_HOST') || 'localhost',
-          port: configService.get('REDIS_PORT') || 6379,
+          // FIX: Removed <string>, <number> generics
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get('REDIS_PORT', 6379),
           password: configService.get('REDIS_PASSWORD'),
-          db: configService.get('REDIS_DB') || 0,
+          db: configService.get('REDIS_DB', 0),
         },
         defaultJobOptions: {
-          attempts: configService.get('QUEUE_JOB_ATTEMPTS') || 3,
+          attempts: configService.get('QUEUE_JOB_ATTEMPTS', 3),
           backoff: {
             type: 'exponential',
             delay: configService.get('QUEUE_JOB_BACKOFF_DELAY') || 2000,

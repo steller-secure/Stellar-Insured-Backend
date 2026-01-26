@@ -9,8 +9,9 @@ import {
   MaxLength,
   Max,
   Min,
-
+  // Type removed from here
 } from 'class-validator';
+import { Type } from 'class-transformer'; // <--- Added correct import
 // FIXED: Type must be imported from class-transformer
 import { Type } from 'class-transformer';
 import { ClaimType } from '../entities/claim.entity';

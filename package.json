@@ -1,5 +1,5 @@
 {
-  "name": "Stellar-Insured-Backend",
+  "name": "stellar-insured-backend",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -38,6 +38,7 @@
     "bcrypt": "^6.0.0",
     "bull": "^4.16.5",
     "cache-manager": "^7.2.8",
+    "cache-manager-redis-store": "^3.0.1",
     "cache-manager-redis-yet": "^5.1.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
@@ -60,6 +61,8 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
     "@types/bcrypt": "^6.0.0",
+    "@types/bull": "^3.15.9",
+    "@types/cache-manager-redis-store": "^2.0.4",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.0.0",
