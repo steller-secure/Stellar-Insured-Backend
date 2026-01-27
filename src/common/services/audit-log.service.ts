@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 // FIX: Use ../../ (Two dots) to get to src
 import { QueueService } from '../../modules/../modules/queue/queue.service';
 import { AuditLogJobData } from '../../modules/../modules/queue/interfaces/audit-log-job.interface';
@@ -33,7 +33,7 @@ export class AuditLogService {
         timestamp: new Date(),
       };
 
-      await this.queueService.queueAuditLog(auditData);
+      await this.queueService.addAuditLogJob(auditData);
       this.logger.debug(
         `Audit log queued for claim ${claimId}: ${action} by user ${userId}`,
       );
@@ -70,7 +70,7 @@ export class AuditLogService {
         timestamp: new Date(),
       };
 
-      await this.queueService.queueAuditLog(auditData);
+      await this.queueService.addAuditLogJob(auditData);
       this.logger.debug(
         `Audit log queued for policy ${policyId}: ${action} by user ${userId}`,
       );
@@ -105,7 +105,7 @@ export class AuditLogService {
         timestamp: new Date(),
       };
 
-      await this.queueService.queueAuditLog(auditData);
+      await this.queueService.addAuditLogJob(auditData);
       this.logger.debug(
         `Audit log queued for ${entity} ${entityId}: ${action} by user ${userId}`,
       );

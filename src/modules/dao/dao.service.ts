@@ -8,6 +8,7 @@ import { ProposalStatus } from './enums/proposal-status.enum';
 import { VoteType } from './enums/vote-type.enum';
 import { AuditService } from '../audit/services/audit.service';
 import { AuditActionType } from '../audit/enums/audit-action-type.enum';
+
 import {
   CreateProposalDto,
   CastVoteDto,
@@ -35,9 +36,6 @@ export class DaoService {
     @InjectRepository(Vote)
     private readonly voteRepository: Repository<Vote>,
     private readonly dataSource: DataSource,
-    private readonly featureFlags: FeatureFlagService,
-    private readonly daoLegacy: DaoLegacyService,
-    private readonly daoV2: DaoV2Service,
     private readonly auditService: AuditService,
   ) {}
 
@@ -268,11 +266,9 @@ export class DaoService {
   }
 
  async process() {
-    if (await this.featureFlags.isEnabled('DAO_V2')) {
-      return this.daoV2.process();
-    }
-
-    return this.daoLegacy.process();
+    // Default DAO processing logic
+    // TODO: Implement actual DAO processing
+    return Promise.resolve();
   }
 
   async activateProposal(id: string, _user: User): Promise<ProposalResponseDto> {

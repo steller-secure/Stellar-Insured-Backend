@@ -31,7 +31,7 @@ module.exports = function (options, webpack) {
     // Externalize node_modules
     externals: [
       nodeExternals({
-        allowlist: ['webpack/hot/poll?100'],
+        allowlist: ['webpack/hot/poll?100', 'uuid'],
       }),
     ],
 
