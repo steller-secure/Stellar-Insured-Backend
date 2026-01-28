@@ -19,6 +19,9 @@ import {
 } from '../../events';
 import { AuditService } from '../audit/services/audit.service';
 import { AuditActionType } from '../audit/enums/audit-action-type.enum';
+import { PaginationDto } from 'src/common/pagination/dto/pagination.dto';
+import { PaginatedResult } from 'src/common/pagination/interfaces/paginated-result.interface';
+import { paginate } from 'src/common/pagination/pagination.util';
 
 @Injectable()
 export class PolicyService {
@@ -109,6 +112,19 @@ export class PolicyService {
     await this.cacheManager.del('analytics_dashboard');
 
     return policy;
+  }
+
+  /**
+   * Get all policies with pagination
+   */
+  async getAllPolicies(
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Policy>> {
+    this.logger.debug('Retrieving all policies with pagination');
+    const queryBuilder = this.policyRepository.createQueryBuilder('policy');
+    queryBuilder.orderBy('policy.createdAt', 'DESC');
+
+    return paginate(queryBuilder, paginationDto);
   }
 
   // FIXED: Added missing methods required by PolicyController
