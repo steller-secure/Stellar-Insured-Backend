@@ -8,6 +8,9 @@ import { ProposalStatus } from './enums/proposal-status.enum';
 import { VoteType } from './enums/vote-type.enum';
 import { AuditService } from '../audit/services/audit.service';
 import { AuditActionType } from '../audit/enums/audit-action-type.enum';
+import { PaginationDto } from 'src/common/pagination/dto/pagination.dto';
+import { PaginatedResult } from 'src/common/pagination/interfaces/paginated-result.interface';
+import { paginate } from 'src/common/pagination/pagination.util';
 
 import {
   CreateProposalDto,
@@ -75,11 +78,12 @@ export class DaoService {
 
   async getProposals(
     queryDto: ProposalListQueryDto,
-  ): Promise<ProposalListResponseDto> {
-    const { status, page = 1, limit = 10 } = queryDto;
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Proposal>> {
+    const { status } = queryDto;
 
-    const queryBuilder = this.proposalRepository
-      .createQueryBuilder('proposal')
+    const queryBuilder = this.proposalRepository.createQueryBuilder('proposal');
+    queryBuilder
       .leftJoin('proposal.votes', 'vote')
       .addSelect('COUNT(vote.id)', 'voteCount')
       .groupBy('proposal.id')
@@ -89,27 +93,8 @@ export class DaoService {
       queryBuilder.where('proposal.status = :status', { status });
     }
 
-    const total = await this.proposalRepository.count({
-      where: status ? { status } : undefined,
-    });
-
-    const proposals = await queryBuilder
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getRawAndEntities();
-
-    const proposalsWithCount = proposals.entities.map((proposal, index) => ({
-      ...this.toProposalResponse(proposal),
-      voteCount: parseInt(proposals.raw[index]?.voteCount || '0', 10),
-    }));
-
-    return {
-      proposals: proposalsWithCount,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    // Use shared pagination utility which handles take/skip and metadata
+    return paginate(queryBuilder, paginationDto);
   }
 
   async getProposalById(id: string): Promise<ProposalResponseDto> {

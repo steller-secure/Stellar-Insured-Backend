@@ -32,6 +32,9 @@ import {
   VoteResultDto,
 } from './dto';
 import { Vote } from './entities/vote.entity';
+import { PaginationDto } from 'src/common/pagination/dto/pagination.dto';
+import { PaginatedResult } from 'src/common/pagination/interfaces/paginated-result.interface';
+import { Proposal } from './entities/proposal.entity';
 
 @ApiTags('DAO')
 @Controller('dao')
@@ -72,8 +75,9 @@ export class DaoController {
   })
   async getProposals(
     @Query() queryDto: ProposalListQueryDto,
-  ): Promise<ProposalListResponseDto> {
-    return this.daoService.getProposals(queryDto);
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Proposal>> {
+    return this.daoService.getProposals(queryDto, paginationDto);
   }
 
   @Get('proposals/:id')

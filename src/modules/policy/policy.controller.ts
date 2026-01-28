@@ -6,6 +6,7 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,11 +20,25 @@ import { PolicyService } from './policy.service';
 import { CreatePolicyDto } from './dto/create-policy.dto';
 import { PolicyTransitionDto } from './dto/policy-transition.dto';
 import { Idempotent } from 'src/common/idempotency';
+import { PaginationDto } from 'src/common/pagination/dto/pagination.dto';
+import { PaginatedResult } from 'src/common/pagination/interfaces/paginated-result.interface';
+import { Policy } from './entities/policy.entity';
 
 @ApiTags('Policies')
 @Controller('policies')
 export class PolicyController {
   constructor(private readonly policyService: PolicyService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Get all policies' })
+  @ApiResponse({ status: 200, description: 'Policies retrieved successfully' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
+  @Throttle({ public: { limit: 50, ttl: 60000 } })
+  async getPolicies(
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Policy>> {
+    return this.policyService.getAllPolicies(paginationDto);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

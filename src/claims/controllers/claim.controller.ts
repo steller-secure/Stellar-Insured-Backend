@@ -10,6 +10,7 @@ import {
   HttpStatus,
   Request,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { ClaimService } from '../services/claim.service';
 import { CreateClaimDto } from '../dto/create-claim.dto';
@@ -18,6 +19,8 @@ import { ClaimOwnerGuard } from '../guards/claim-owner.guard';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from 'src/permissions/permission.guard';
 import { Idempotent } from 'src/common/idempotency';
+import { PaginationDto } from 'src/common/pagination/dto/pagination.dto';
+import { PaginatedResult } from 'src/common/pagination/interfaces/paginated-result.interface';
 
 @Controller('claims')
 export class ClaimController {
@@ -66,14 +69,17 @@ export class ClaimController {
    * Retrieve all claims for the authenticated user
    */
   @Get('user/me')
-  async getUserClaims(req: any): Promise<Claim[]> {
+  async getUserClaims(
+    req: any,
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Claim>> {
     const userId = req.user?.id;
 
     if (!userId) {
       throw new BadRequestException('User ID is required');
     }
 
-    return this.claimService.getClaimsByUserId(userId);
+    return this.claimService.getClaimsByUserId(userId, paginationDto);
   }
 
   /**
@@ -82,8 +88,11 @@ export class ClaimController {
    * Note: Admin endpoint - should be restricted
    */
   @Get('policy/:policyId')
-  async getPolicyClaims(policyId: string): Promise<Claim[]> {
-    return this.claimService.getClaimsByPolicyId(policyId);
+  async getPolicyClaims(
+    policyId: string,
+    @Query() paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Claim>> {
+    return this.claimService.getClaimsByPolicyId(policyId, paginationDto);
   }
 
   /**

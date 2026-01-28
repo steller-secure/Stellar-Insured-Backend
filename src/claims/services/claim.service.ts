@@ -7,6 +7,9 @@ import { DuplicateDetectionService } from './duplicate-detection.service';
 import { DuplicateClaimDetectedException } from '../exceptions/claim.exceptions';
 import { AuditService } from '../../modules/audit/services/audit.service';
 import { AuditActionType } from '../../modules/audit/enums/audit-action-type.enum';
+import { PaginationDto } from 'src/common/pagination/dto/pagination.dto';
+import { PaginatedResult } from 'src/common/pagination/interfaces/paginated-result.interface';
+import { paginate } from 'src/common/pagination/pagination.util';
 
 @Injectable()
 export class ClaimService {
@@ -112,23 +115,33 @@ export class ClaimService {
   /**
    * Retrieve all claims for a user
    */
-  async getClaimsByUserId(userId: string): Promise<Claim[]> {
+  async getClaimsByUserId(
+    userId: string,
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Claim>> {
     this.logger.debug(`Retrieving all claims for user ${userId}`);
-    return this.claimRepository.find({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-    });
+    const queryBuilder = this.claimRepository.createQueryBuilder('claim');
+    queryBuilder
+      .where('claim.userId = :userId', { userId })
+      .orderBy('claim.createdAt', 'DESC');
+
+    return paginate(queryBuilder, paginationDto);
   }
 
   /**
    * Retrieve all claims for a policy
    */
-  async getClaimsByPolicyId(policyId: string): Promise<Claim[]> {
+  async getClaimsByPolicyId(
+    policyId: string,
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedResult<Claim>> {
     this.logger.debug(`Retrieving all claims for policy ${policyId}`);
-    return this.claimRepository.find({
-      where: { policyId },
-      order: { createdAt: 'DESC' },
-    });
+    const queryBuilder = this.claimRepository.createQueryBuilder('claim');
+    queryBuilder
+      .where('claim.policyId = :policyId', { policyId })
+      .orderBy('claim.createdAt', 'DESC');
+
+    return paginate(queryBuilder, paginationDto);
   }
 
   /**
