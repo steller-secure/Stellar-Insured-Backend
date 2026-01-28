@@ -8,6 +8,8 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from './config/config.module';
 import { AppConfigService } from './config/app-config.service';
 import { DatabaseModule } from './common/database/database.module';
+import { IdempotencyModule } from './common/idempotency/idempotency.module';
+import { IdempotencyInterceptor } from './common/idempotency/interceptors/idempotency.interceptor';
 import { HealthModule } from './modules/health/health.module';
 import { ClaimsModule } from './modules/claims/claims.module';
 import { PolicyModule } from './modules/policy/policy.module';
@@ -40,6 +42,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
       isGlobal: true,
     }),
     DatabaseModule,
+    IdempotencyModule,
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: AppConfigService) => ({
@@ -88,6 +91,10 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: IdempotencyInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

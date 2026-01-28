@@ -15,12 +15,14 @@ import {
   ApiParam,
   ApiResponse,
   ApiTags,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { DaoService } from './dao.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DaoMemberGuard } from './guards/dao-member.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
+import { Idempotent } from 'src/common/idempotency';
 import {
   CreateProposalDto,
   CastVoteDto,
@@ -48,6 +50,12 @@ export class DaoController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Stellar wallet required' })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    description: 'Unique identifier for idempotent requests (required)',
+    required: true,
+  })
+  @Idempotent()
   async createProposal(
     @Body() createProposalDto: CreateProposalDto,
     @CurrentUser() user: User,
@@ -97,6 +105,12 @@ export class DaoController {
   @ApiResponse({ status: 403, description: 'Stellar wallet required' })
   @ApiResponse({ status: 404, description: 'Proposal not found' })
   @ApiResponse({ status: 409, description: 'Duplicate vote' })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    description: 'Unique identifier for idempotent requests (required)',
+    required: true,
+  })
+  @Idempotent()
   async castVote(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() castVoteDto: CastVoteDto,
@@ -131,6 +145,12 @@ export class DaoController {
   })
   @ApiResponse({ status: 400, description: 'Proposal not in draft status' })
   @ApiResponse({ status: 404, description: 'Proposal not found' })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    description: 'Unique identifier for idempotent requests (required)',
+    required: true,
+  })
+  @Idempotent()
   async activateProposal(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,

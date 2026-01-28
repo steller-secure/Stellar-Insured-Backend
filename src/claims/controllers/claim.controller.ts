@@ -17,6 +17,7 @@ import { Claim, ClaimStatus } from '../entities/claim.entity';
 import { ClaimOwnerGuard } from '../guards/claim-owner.guard';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from 'src/permissions/permission.guard';
+import { Idempotent } from 'src/common/idempotency';
 
 @Controller('claims')
 export class ClaimController {
@@ -26,11 +27,13 @@ export class ClaimController {
    * POST /claims
    * Create a new claim
    * Requires: authenticated user with active policy
+   * Requires: Idempotency-Key header for deduplication
    * Validation: policy eligibility, duplicate detection
    * Response: 201 Created with claim details (or 409 if duplicate detected)
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Idempotent()
   async createClaim(req: any, createClaimDto: CreateClaimDto): Promise<Claim> {
     const userId = req.user?.id;
 
@@ -87,8 +90,10 @@ export class ClaimController {
    * PATCH /claims/:claimId/status
    * Update claim status (for admin/reviewer)
    * Requires: admin or authorized reviewer
+   * Requires: Idempotency-Key header for safe replay
    */
   @Patch(':claimId/status')
+  @Idempotent()
   async updateClaimStatus(
     claimId: string,
     body: { status: ClaimStatus; notes?: string },
