@@ -9,8 +9,15 @@ export class StorageService {
   private ipfs: ReturnType<typeof create>;
 
   constructor(private readonly config: ConfigService) {
-    const ipfsUrl = this.config.get<string>('STELLAR_HORIZON_URL') || 'http://localhost:5001';
-    this.ipfs = create({ url: ipfsUrl });
+    const ipfsHost = this.config.get<string>('IPFS_HOST') || 'localhost';
+    const ipfsPort = this.config.get<number>('IPFS_PORT') || 5001;
+    const ipfsProtocol = this.config.get<string>('IPFS_PROTOCOL') || 'http';
+    
+    this.ipfs = create({
+      host: ipfsHost,
+      port: ipfsPort,
+      protocol: ipfsProtocol,
+    });
   }
 
   async pinFile(fileBuffer: Buffer): Promise<string> {

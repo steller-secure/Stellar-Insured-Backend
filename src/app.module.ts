@@ -64,6 +64,21 @@ import { StorageModule } from './storage/storage.module';
           ttl: config.get<number>('THROTTLE_AUTH_TTL') || 900000,
           limit: config.get<number>('THROTTLE_AUTH_LIMIT') || 5,
         },
+        {
+          name: 'public',
+          ttl: config.get<number>('THROTTLE_PUBLIC_TTL') || 60000,
+          limit: config.get<number>('THROTTLE_PUBLIC_LIMIT') || 50,
+        },
+        {
+          name: 'admin',
+          ttl: config.get<number>('THROTTLE_ADMIN_TTL') || 60000,
+          limit: config.get<number>('THROTTLE_ADMIN_LIMIT') || 100,
+        },
+        {
+          name: 'claims',
+          ttl: config.get<number>('THROTTLE_CLAIMS_TTL') || 3600000,
+          limit: config.get<number>('THROTTLE_CLAIMS_LIMIT') || 10,
+        },
       ],
     }),
   ],
