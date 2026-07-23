@@ -38,7 +38,7 @@ describe('UserController', () => {
   describe('getUser', () => {
     it('should return user data when user exists', async () => {
       mockUserService.findById.mockResolvedValue(mockUser);
-      const result = await controller.getUser({ id: 'user-123' });
+      const result = (await controller.getUser({ id: 'user-123' })) as any;
       expect(result.id).toBe('user-123');
       expect(result.walletAddress).toBe('GABC123');
     });

@@ -38,14 +38,13 @@ describe('ResponseTransformInterceptor', () => {
     });
   });
 
-  it('preserves Date and other class instances while stripping around them', async () => {
+  it('serializes Date instances to ISO strings while stripping around them', async () => {
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
     const result = (await run({ createdAt, deletedAt: createdAt })) as {
-      data: { createdAt: Date };
+      data: { createdAt: string };
     };
 
-    expect(result.data).toEqual({ createdAt });
-    expect(result.data.createdAt).toBeInstanceOf(Date);
+    expect(result.data).toEqual({ createdAt: createdAt.toISOString() });
   });
 
   it('leaves explicitly shaped success bodies untouched', async () => {

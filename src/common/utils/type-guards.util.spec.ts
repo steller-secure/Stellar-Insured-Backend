@@ -1,4 +1,9 @@
-import { isBigInt, isPrismaDecimal, isDate, needsSerialization } from './type-guards.util';
+import {
+  isBigInt,
+  isPrismaDecimal,
+  isDate,
+  needsSerialization,
+} from './type-guards.util';
 
 describe('type-guards.util', () => {
   describe('isBigInt', () => {
@@ -29,8 +34,12 @@ describe('type-guards.util', () => {
     });
 
     it('should return true for Decimal with different structures', () => {
-      expect(isPrismaDecimal({ d: [1], s: 0, e: 0, toString: () => '1' })).toBe(true);
-      expect(isPrismaDecimal({ s: 2, e: 0, toString: () => '0.01' })).toBe(true);
+      expect(isPrismaDecimal({ d: [1], s: 0, e: 0, toString: () => '1' })).toBe(
+        true,
+      );
+      expect(isPrismaDecimal({ s: 2, e: 0, toString: () => '0.01' })).toBe(
+        true,
+      );
       expect(isPrismaDecimal({ e: 0, toString: () => '100' })).toBe(true);
     });
 

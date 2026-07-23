@@ -19,9 +19,13 @@ export class WebPushService {
   private readonly publicKey: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.publicKey = this.configService.get<string>('notification.vapid.publicKey') || '';
-    const privateKey = this.configService.get<string>('notification.vapid.privateKey') || '';
-    const subjectEmail = this.configService.get<string>('notification.vapid.subjectEmail') || 'admin@novafund.xyz';
+    this.publicKey =
+      this.configService.get<string>('notification.vapid.publicKey') || '';
+    const privateKey =
+      this.configService.get<string>('notification.vapid.privateKey') || '';
+    const subjectEmail =
+      this.configService.get<string>('notification.vapid.subjectEmail') ||
+      'admin@novafund.xyz';
 
     if (this.publicKey && privateKey) {
       webpush.setVapidDetails(

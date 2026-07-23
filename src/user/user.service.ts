@@ -14,8 +14,8 @@ import {
   isValidWalletAddress,
 } from '../common/utils/sanitization.util';
 import { REPUTATION_DELTAS } from '../reputation/reputation.constants';
-import { AuditService } from '../insurance/services/audit.service';
-import { AuditAction } from '../insurance/enums/audit-action.enum';
+import { DomainEventBus } from '../common/events/domain-event-bus.service';
+import { DomainEventName } from '../common/events/event-types';
 import { Prisma, User } from '@prisma/client';
 
 export interface PaginatedUsers {
@@ -33,18 +33,14 @@ export class UserService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly encryption: EncryptionService,
-    private readonly auditService: AuditService,
+    private readonly eventBus: DomainEventBus,
   ) {}
 
   async findById(id: string): Promise<User> {
-    // Validate ID format before querying database
     if (!isValidCuid(id)) {
       throw new BadRequestException('Invalid user ID format');
     }
 
-    // The soft-delete middleware already filters deleted rows; the explicit
-    // deletedAt filter is defense-in-depth so this query stays correct even
-    // if the middleware is bypassed or misconfigured.
     const user = await this.prisma.user.findFirst({
       where: {
         id,
@@ -54,12 +50,10 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    // Decrypt sensitive fields
     return this.decryptUser(user);
   }
 
   async findByWallet(walletAddress: string): Promise<User> {
-    // Validate wallet address format before querying database
     if (!isValidWalletAddress(walletAddress)) {
       throw new BadRequestException('Invalid wallet address format');
     }
@@ -77,7 +71,6 @@ export class UserService {
         `User with wallet address ${sanitizedAddress} not found`,
       );
     }
-    // Decrypt sensitive fields
     return this.decryptUser(user);
   }
 
@@ -108,14 +101,12 @@ export class UserService {
   }
 
   async create(walletAddress: string, email?: string): Promise<User> {
-    // Validate wallet address format
     if (!isValidWalletAddress(walletAddress)) {
       throw new BadRequestException('Invalid wallet address format');
     }
 
     const sanitizedAddress = sanitizeString(walletAddress);
 
-    // Check if user exists (wallet address is public identifier, not encrypted)
     const existingUser = await this.prisma.user.findUnique({
       where: { walletAddress: sanitizedAddress },
     });
@@ -126,7 +117,6 @@ export class UserService {
       );
     }
 
-    // Encrypt email for privacy
     const sanitizedEmail = email ? sanitizeString(email) : null;
     const encryptedEmail = sanitizedEmail
       ? this.encryption.encrypt(sanitizedEmail)
@@ -149,15 +139,18 @@ export class UserService {
   }
 
   async update(id: string, updateData: UpdateUserDto): Promise<User> {
-    // Validate ID format
     if (!isValidCuid(id)) {
       throw new BadRequestException('Invalid user ID format');
     }
 
-    await this.findById(id); // Ensure user exists
+    const beforeUser = await this.findById(id);
+    const beforeSnapshot = {
+      id: beforeUser.id,
+      email: beforeUser.email,
+      profileData: beforeUser.profileData,
+      pushSubscription: beforeUser.pushSubscription,
+    };
 
-    // Build sanitized update payload with explicit property selection
-    // This prevents mass assignment by only allowing known safe fields
     const data: Prisma.UserUpdateInput = {};
 
     if (updateData.email !== undefined) {
@@ -165,8 +158,6 @@ export class UserService {
     }
 
     if (updateData.profileData !== undefined) {
-      // profileData is already validated by DTO (ProfileDataDto)
-      // Apply an additional sanitization pass for defense-in-depth
       data.profileData = this.toJsonInput(
         sanitizeObject(updateData.profileData),
       );
@@ -178,36 +169,35 @@ export class UserService {
       );
     }
 
-        const beforeUser = await this.findById(id);
-    const beforeSnapshot = { id: beforeUser.id, email: beforeUser.email, profileData: beforeUser.profileData, pushSubscription: beforeUser.pushSubscription };
-
     const updatedUser = await this.prisma.$transaction(async tx => {
       return tx.user.update({
         where: { id },
         data,
       });
     });
+
+    const afterSnapshot = {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      profileData: updatedUser.profileData,
+      pushSubscription: updatedUser.pushSubscription,
+    };
+
+    await this.eventBus.emit(DomainEventName.USER_UPDATED, {
+      userId: id,
+      beforeState: beforeSnapshot,
+      afterState: afterSnapshot,
+      reason: 'Profile updated',
+    });
+
     return updatedUser;
-    const { beforeState, afterState } = this.auditService.snapshotDiff(beforeSnapshot, { id: updatedUser.id, email: updatedUser.email, profileData: updatedUser.profileData, pushSubscription: updatedUser.pushSubscription });
-    await this.auditService.log(AuditAction.UPDATE, 'User', id, beforeState, afterState, undefined, 'Profile updated');
   }
 
-  /**
-   * Soft-deletes a user and cascades the soft delete to their related
-   * records (notifications, notification settings, insurance policies and
-   * the claims on those policies) so nothing is orphaned or hard-deleted.
-   *
-   * The user remains recoverable: restoring is a matter of clearing the
-   * shared deletedAt timestamp (see SoftDeleteService.restore).
-   */
   async delete(id: string): Promise<{ id: string; deletedAt: Date | null }> {
     await this.findById(id);
 
     const deletedAt = new Date();
 
-    // Single transaction so the user and their related records are either
-    // all soft-deleted or none are. The soft-delete middleware limits each
-    // update to rows that are still active, preserving earlier deletions.
     const [deletedUser] = await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id },
@@ -231,7 +221,13 @@ export class UserService {
       }),
     ]);
 
-    await this.auditService.log(AuditAction.DELETE, 'User', id, { id, deletedAt: null }, { id, deletedAt: deletedUser.deletedAt }, undefined, 'User soft-deleted');
+    await this.eventBus.emit(DomainEventName.USER_DELETED, {
+      userId: id,
+      beforeState: { id, deletedAt: null },
+      afterState: { id, deletedAt: deletedUser.deletedAt },
+      reason: 'User soft-deleted',
+    });
+
     return {
       id: deletedUser.id,
       deletedAt: deletedUser.deletedAt,
@@ -273,18 +269,13 @@ export class UserService {
     };
   }
 
-  /**
-   * Decrypt sensitive fields in user object
-   */
   private decryptUser(user: User): User {
     const decrypted = { ...user };
 
     if (decrypted.email) {
       try {
         decrypted.email = this.encryption.decrypt(decrypted.email);
-      } catch {
-        // If decryption fails, keep encrypted value
-      }
+      } catch {}
     }
 
     if (decrypted.pushSubscription) {
@@ -295,9 +286,7 @@ export class UserService {
         decrypted.pushSubscription = JSON.parse(
           decryptedJson,
         ) as Prisma.JsonValue;
-      } catch {
-        // If decryption fails, keep encrypted value
-      }
+      } catch {}
     }
 
     return decrypted;

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../database.module';
-import { ReputationModule } from '../reputation/reputation.module';
 
 import { InsuranceController } from './insurance.controller';
 
@@ -10,10 +9,11 @@ import { ClaimService } from './claim.service';
 import { ReinsuranceService } from './reinsurance.service';
 import { PricingService } from './pricing.service';
 import { AuditService } from './services/audit.service';
+import { AuditEventListener } from '../common/events/listeners/audit-event.listener';
 import { IdempotencyInterceptor } from '../interceptors/idempotency.interceptor';
 
 @Module({
-  imports: [DatabaseModule, ReputationModule],
+  imports: [DatabaseModule],
   controllers: [InsuranceController],
   providers: [
     InsuranceService,
@@ -22,6 +22,7 @@ import { IdempotencyInterceptor } from '../interceptors/idempotency.interceptor'
     ReinsuranceService,
     PricingService,
     AuditService,
+    AuditEventListener,
     IdempotencyInterceptor,
   ],
   exports: [

@@ -1,4 +1,14 @@
-import { Controller, Post, Body, Delete, Param, UseInterceptors, UploadedFile, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Delete,
+  Param,
+  UseInterceptors,
+  UploadedFile,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import {
@@ -39,7 +49,9 @@ export class StorageController {
   @ApiOperation({ summary: 'Optimize and upload a banner image' })
   @ApiBody({ type: OptimizeImageDto })
   @ApiCreatedResponse({ description: 'Returns the uploaded banner CID' })
-  async optimizeAndUploadBanner(@Body() dto: OptimizeImageDto): Promise<string> {
+  async optimizeAndUploadBanner(
+    @Body() dto: OptimizeImageDto,
+  ): Promise<string> {
     const optimizedImage = await this.storageService.optimizeImage(
       dto.imagePath,
       dto.width,
@@ -53,7 +65,9 @@ export class StorageController {
 
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 hash verifications per minute
   @Post('verify-hash')
-  @ApiOperation({ summary: 'Verify an IPFS hash using standardized validation' })
+  @ApiOperation({
+    summary: 'Verify an IPFS hash using standardized validation',
+  })
   @ApiBody({ type: VerifyHashDto })
   @ApiOkResponse({ description: 'Returns whether the hash is valid' })
   async verifyIPFSHash(@Body() dto: VerifyHashDto): Promise<boolean> {
@@ -71,8 +85,16 @@ export class StorageController {
     schema: {
       type: 'object',
       properties: {
-        file: { type: 'string', format: 'binary', description: 'File to upload' },
-        prefix: { type: 'string', description: 'Optional folder prefix', example: 'uploads' },
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'File to upload',
+        },
+        prefix: {
+          type: 'string',
+          description: 'Optional folder prefix',
+          example: 'uploads',
+        },
       },
       required: ['file'],
     },
@@ -91,7 +113,10 @@ export class StorageController {
   @ApiBody({ type: PresignUrlDto })
   @ApiOkResponse({ description: 'Returns the presigned URL' })
   async getPresignedUrl(@Body() dto: PresignUrlDto): Promise<{ url: string }> {
-    const url = await this.storageService.getPresignedUrl(dto.key, dto.expiresIn);
+    const url = await this.storageService.getPresignedUrl(
+      dto.key,
+      dto.expiresIn,
+    );
     return { url };
   }
 

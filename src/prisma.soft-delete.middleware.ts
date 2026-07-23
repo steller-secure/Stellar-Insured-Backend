@@ -17,6 +17,7 @@ export const SOFT_DELETE_MODELS = [
   'AuditLog',
   'LedgerCursor',
   'ProcessedEvent',
+  'QuarantinedEvent',
   'IndexerLog',
   'NotificationSetting',
   'Notification',
@@ -82,28 +83,22 @@ export function createSoftDeleteMiddleware(
         action,
       )
     ) {
-      // Check if includeDeleted is explicitly set to true in query options
       const includeDeleted = shouldIncludeDeleted(args);
 
       if (config.excludeDeleted && !includeDeleted) {
-        // Add deletedAt filter to where clause
         args.where = {
           ...args.where,
           deletedAt: null,
         };
       }
 
-      // Remove the flag from the query before sending to database
       removeIncludeDeletedFlags(args);
     }
 
     // Handle update operations - prevent updating through relations
     if (action === 'update' || action === 'updateMany') {
-      // Restore operations (data.deletedAt === null) must be able to reach
-      // soft-deleted rows, otherwise a deleted record could never be recovered.
       const isRestore = args.data?.deletedAt === null;
 
-      // Only update non-deleted records
       if (config.excludeDeleted && !isRestore) {
         args.where = {
           ...args.where,
@@ -114,8 +109,6 @@ export function createSoftDeleteMiddleware(
 
     // Handle delete operations - convert to soft delete
     if (action === 'delete' || action === 'deleteMany') {
-      // Explicit, audited purge paths (e.g. SoftDeleteService.hardDelete,
-      // GDPR erasure, re-org rollbacks) may opt out of the conversion.
       if (shouldHardDelete(args)) {
         removeHardDeleteFlags(args);
         return next(params);
@@ -123,9 +116,6 @@ export function createSoftDeleteMiddleware(
 
       removeHardDeleteFlags(args);
 
-      // Convert delete to update with deletedAt timestamp.
-      // Only touch rows that are not already soft-deleted so repeated
-      // deletes do not silently re-stamp deletedAt.
       const updateArgs = {
         where: {
           ...args.where,
@@ -136,7 +126,6 @@ export function createSoftDeleteMiddleware(
         },
       };
 
-      // Execute update instead of delete
       return next({
         ...params,
         action: action === 'delete' ? 'update' : 'updateMany',

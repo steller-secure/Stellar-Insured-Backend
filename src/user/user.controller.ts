@@ -37,8 +37,18 @@ export class UserController {
   @Get()
   @ApiOperation({ summary: 'List users with pagination' })
   @ApiOkResponse({ description: 'A paginated collection of users' })
-  @ApiQuery({ name: 'page', type: Number, required: false, description: 'Page number' })
-  @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of users per page' })
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: false,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: false,
+    description: 'Number of users per page',
+  })
   async getUsers(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit = 20,
@@ -59,8 +69,14 @@ export class UserController {
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 wallet lookups per minute
   @Get('wallet/:address')
   @ApiOperation({ summary: 'Retrieve a user by wallet address' })
-  @ApiParam({ name: 'address', type: String, description: 'Wallet address to search by' })
-  @ApiOkResponse({ description: 'User data associated with the wallet address' })
+  @ApiParam({
+    name: 'address',
+    type: String,
+    description: 'Wallet address to search by',
+  })
+  @ApiOkResponse({
+    description: 'User data associated with the wallet address',
+  })
   async getUserByWallet(@Param() params: WalletAddressDto) {
     const user = await this.userService.findByWallet(params.address);
     return this.mapUserResponse(user);
@@ -69,7 +85,11 @@ export class UserController {
   @Throttle({ default: { limit: 20, ttl: 3600000 } }) // 20 updates per hour per user
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user profile' })
-  @ApiParam({ name: 'id', type: String, description: 'ID of the user to update' })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'ID of the user to update',
+  })
   @ApiBody({ type: UpdateUserDto })
   @ApiOkResponse({ description: 'Updated user data' })
   async updateUser(
@@ -83,7 +103,11 @@ export class UserController {
   @Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 deletions per hour per user
   @Delete(':id')
   @ApiOperation({ summary: 'Soft delete a user' })
-  @ApiParam({ name: 'id', type: String, description: 'ID of the user to delete' })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'ID of the user to delete',
+  })
   @ApiOkResponse({ description: 'Deletion result' })
   async deleteUser(@Param() params: UserParamsDto) {
     const result = await this.userService.delete(params.id);

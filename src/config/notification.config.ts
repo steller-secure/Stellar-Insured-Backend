@@ -12,14 +12,17 @@ export interface NotificationConfig {
   };
 }
 
-export default registerAs('notification', (): NotificationConfig => ({
-  sendgrid: {
-    apiKey: process.env.SENDGRID_API_KEY || '',
-    fromEmail: process.env.SENDGRID_FROM_EMAIL || 'noreply@novafund.xyz',
-  },
-  vapid: {
-    publicKey: process.env.VAPID_PUBLIC_KEY || '',
-    privateKey: process.env.VAPID_PRIVATE_KEY || '',
-    subjectEmail: process.env.VAPID_SUBJECT_EMAIL || 'admin@novafund.xyz',
-  },
-}));
+export default registerAs(
+  'notification',
+  (): NotificationConfig => ({
+    sendgrid: {
+      apiKey: process.env.SENDGRID_API_KEY || '',
+      fromEmail: process.env.SENDGRID_FROM_EMAIL || 'noreply@novafund.xyz',
+    },
+    vapid: {
+      publicKey: process.env.VAPID_PUBLIC_KEY || '',
+      privateKey: process.env.VAPID_PRIVATE_KEY || '',
+      subjectEmail: process.env.VAPID_SUBJECT_EMAIL || 'admin@novafund.xyz',
+    },
+  }),
+);

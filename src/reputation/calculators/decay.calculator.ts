@@ -25,6 +25,9 @@ export function timeDecayWeight(
   halfLifeDays: number = DECAY_HALF_LIFE_DAYS,
 ): number {
   const msPerDay = 86_400_000;
-  const ageDays = Math.max(0, (now.getTime() - occurredAt.getTime()) / msPerDay);
+  const ageDays = Math.max(
+    0,
+    (now.getTime() - occurredAt.getTime()) / msPerDay,
+  );
   return Math.pow(2, -ageDays / halfLifeDays);
 }

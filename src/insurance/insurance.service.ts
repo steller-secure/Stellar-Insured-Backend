@@ -5,7 +5,8 @@ import { PoolService } from './pool.service';
 import { RiskType } from './enums/risk-type.enum';
 import { PolicyStatus } from './enums/policy-status.enum';
 import { PrismaService } from '../prisma.service';
-import { AuditService } from './services/audit.service';
+import { DomainEventBus } from '../common/events/domain-event-bus.service';
+import { DomainEventName } from '../common/events/event-types';
 import { InsurancePolicy } from '@prisma/client';
 
 @Injectable()
@@ -16,7 +17,7 @@ export class InsuranceService {
     private readonly pricing: PricingService,
     private readonly pools: PoolService,
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService,
+    private readonly eventBus: DomainEventBus,
   ) {}
 
   async purchasePolicy(
@@ -33,12 +34,12 @@ export class InsuranceService {
     }
 
     try {
-      return await this.prisma.$transaction(async tx => {
+      const created = await this.prisma.$transaction(async tx => {
         const premium = this.pricing.calculatePremium(riskType, coverageAmount);
 
         await this.pools.lockCapital(poolId, coverageAmount, tx);
 
-        const created = await tx.insurancePolicy.create({
+        return await tx.insurancePolicy.create({
           data: {
             userId,
             poolId,
@@ -47,9 +48,15 @@ export class InsuranceService {
             premium,
           },
         });
-        await this.auditService.logPurchase('InsurancePolicy', created.id, created, undefined, 'Policy purchased');
-        return created;
       });
+
+      await this.eventBus.emit(DomainEventName.POLICY_PURCHASED, {
+        entityId: created.id,
+        entity: created,
+        reason: 'Policy purchased',
+      });
+
+      return created;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
@@ -60,46 +67,80 @@ export class InsuranceService {
   }
 
   async cancelPolicy(policyId: string): Promise<InsurancePolicy> {
-    return await this.prisma.$transaction(async tx => {
-      const policy = await tx.insurancePolicy.findUnique({
-        where: { id: policyId },
-      });
-      if (!policy) {
-        throw new BadRequestException(`Policy ${policyId} not found`);
-      }
-      if (policy.status === PolicyStatus.CANCELLED || policy.status === PolicyStatus.EXPIRED) {
-        throw new BadRequestException('Policy is already inactive');
-      }
-      const beforeState = { ...policy };
-      const updated = await tx.insurancePolicy.update({
-        where: { id: policyId },
-        data: { status: PolicyStatus.CANCELLED },
-      });
-      await this.pools.unlockCapital(policy.poolId, policy.coverageAmount as Prisma.Decimal, tx);
-      await this.auditService.logUpdate('InsurancePolicy', policyId, beforeState, updated, undefined, 'Policy cancelled', tx);
-      return updated;
+    const { updated, beforeState } = await this.prisma.$transaction(
+      async tx => {
+        const policy = await tx.insurancePolicy.findUnique({
+          where: { id: policyId },
+        });
+        if (!policy) {
+          throw new BadRequestException(`Policy ${policyId} not found`);
+        }
+        if (
+          policy.status === PolicyStatus.CANCELLED ||
+          policy.status === PolicyStatus.EXPIRED
+        ) {
+          throw new BadRequestException('Policy is already inactive');
+        }
+        const beforeState = { ...policy };
+        const updated = await tx.insurancePolicy.update({
+          where: { id: policyId },
+          data: { status: PolicyStatus.CANCELLED },
+        });
+        await this.pools.unlockCapital(
+          policy.poolId,
+          policy.coverageAmount as Prisma.Decimal,
+          tx,
+        );
+        return { updated, beforeState };
+      },
+    );
+
+    await this.eventBus.emit(DomainEventName.POLICY_CANCELLED, {
+      entityId: policyId,
+      beforeState,
+      afterState: updated,
+      reason: 'Policy cancelled',
     });
+
+    return updated;
   }
 
   async expirePolicy(policyId: string): Promise<InsurancePolicy> {
-    return await this.prisma.$transaction(async tx => {
-      const policy = await tx.insurancePolicy.findUnique({
-        where: { id: policyId },
-      });
-      if (!policy) {
-        throw new BadRequestException(`Policy ${policyId} not found`);
-      }
-      if (policy.status === PolicyStatus.EXPIRED || policy.status === PolicyStatus.CANCELLED) {
-        throw new BadRequestException('Policy is already inactive');
-      }
-      const beforeState = { ...policy };
-      const updated = await tx.insurancePolicy.update({
-        where: { id: policyId },
-        data: { status: PolicyStatus.EXPIRED },
-      });
-      await this.pools.unlockCapital(policy.poolId, policy.coverageAmount as Prisma.Decimal, tx);
-      await this.auditService.logUpdate('InsurancePolicy', policyId, beforeState, updated, undefined, 'Policy expired', tx);
-      return updated;
+    const { updated, beforeState } = await this.prisma.$transaction(
+      async tx => {
+        const policy = await tx.insurancePolicy.findUnique({
+          where: { id: policyId },
+        });
+        if (!policy) {
+          throw new BadRequestException(`Policy ${policyId} not found`);
+        }
+        if (
+          policy.status === PolicyStatus.EXPIRED ||
+          policy.status === PolicyStatus.CANCELLED
+        ) {
+          throw new BadRequestException('Policy is already inactive');
+        }
+        const beforeState = { ...policy };
+        const updated = await tx.insurancePolicy.update({
+          where: { id: policyId },
+          data: { status: PolicyStatus.EXPIRED },
+        });
+        await this.pools.unlockCapital(
+          policy.poolId,
+          policy.coverageAmount as Prisma.Decimal,
+          tx,
+        );
+        return { updated, beforeState };
+      },
+    );
+
+    await this.eventBus.emit(DomainEventName.POLICY_EXPIRED, {
+      entityId: policyId,
+      beforeState,
+      afterState: updated,
+      reason: 'Policy expired',
     });
+
+    return updated;
   }
 }

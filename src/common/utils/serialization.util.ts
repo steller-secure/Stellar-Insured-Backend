@@ -36,7 +36,9 @@ export class SerializationTransformer {
     // Handle objects recursively
     if (typeof value === 'object') {
       const result: Record<string, unknown> = {};
-      for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      for (const [key, item] of Object.entries(
+        value as Record<string, unknown>,
+      )) {
         result[key] = this.transform(item);
       }
       return result;
@@ -74,7 +76,7 @@ export class SerializationTransformer {
    */
   static transformPartial<T extends Record<string, unknown>>(
     obj: T,
-    fields: (keyof T)[]
+    fields: (keyof T)[],
   ): Partial<T> {
     const result: Partial<T> = {};
     for (const field of fields) {

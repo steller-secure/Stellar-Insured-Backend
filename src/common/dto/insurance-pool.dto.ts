@@ -30,7 +30,9 @@ export class CreateInsurancePoolDto {
   @ApiProperty()
   name: string;
 
-  @ApiProperty({ description: 'Capital as string (will be converted to Decimal)' })
+  @ApiProperty({
+    description: 'Capital as string (will be converted to Decimal)',
+  })
   capital: string;
 }
 
@@ -41,7 +43,9 @@ export class UpdateInsurancePoolDto {
   @ApiPropertyOptional()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Capital as string (will be converted to Decimal)' })
+  @ApiPropertyOptional({
+    description: 'Capital as string (will be converted to Decimal)',
+  })
   capital?: string;
 }
 

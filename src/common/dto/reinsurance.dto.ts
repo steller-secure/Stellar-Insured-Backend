@@ -30,10 +30,14 @@ export class CreateReinsuranceContractDto {
   @ApiProperty()
   poolId: string;
 
-  @ApiProperty({ description: 'Coverage limit as string (will be converted to Decimal)' })
+  @ApiProperty({
+    description: 'Coverage limit as string (will be converted to Decimal)',
+  })
   coverageLimit: string;
 
-  @ApiProperty({ description: 'Premium rate as string (will be converted to Decimal)' })
+  @ApiProperty({
+    description: 'Premium rate as string (will be converted to Decimal)',
+  })
   premiumRate: string;
 }
 
@@ -41,10 +45,14 @@ export class CreateReinsuranceContractDto {
  * Update ReinsuranceContract DTO
  */
 export class UpdateReinsuranceContractDto {
-  @ApiPropertyOptional({ description: 'Coverage limit as string (will be converted to Decimal)' })
+  @ApiPropertyOptional({
+    description: 'Coverage limit as string (will be converted to Decimal)',
+  })
   coverageLimit?: string;
 
-  @ApiPropertyOptional({ description: 'Premium rate as string (will be converted to Decimal)' })
+  @ApiPropertyOptional({
+    description: 'Premium rate as string (will be converted to Decimal)',
+  })
   premiumRate?: string;
 }
 

@@ -68,7 +68,9 @@ export class NonceService {
     const stored = await this.cache.get<string>(key);
 
     if (!stored) {
-      this.logger.warn(`Nonce validation failed — unknown or expired: ${nonce}`);
+      this.logger.warn(
+        `Nonce validation failed — unknown or expired: ${nonce}`,
+      );
       throw new BadRequestException(
         'Nonce is invalid, expired, or has already been used.',
       );

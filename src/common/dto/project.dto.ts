@@ -71,7 +71,9 @@ export class CreateProjectDto {
   @ApiProperty()
   category: string;
 
-  @ApiProperty({ description: 'Funding goal as string (will be converted to BigInt)' })
+  @ApiProperty({
+    description: 'Funding goal as string (will be converted to BigInt)',
+  })
   goal: string;
 
   @ApiProperty()
@@ -94,7 +96,9 @@ export class UpdateProjectDto {
   @ApiPropertyOptional()
   category?: string;
 
-  @ApiPropertyOptional({ description: 'Funding goal as string (will be converted to BigInt)' })
+  @ApiPropertyOptional({
+    description: 'Funding goal as string (will be converted to BigInt)',
+  })
   goal?: string;
 
   @ApiPropertyOptional()

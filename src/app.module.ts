@@ -13,9 +13,10 @@ import appConfig from './config/app.config';
 import notificationConfig from './config/notification.config';
 import storageConfig from './config/storage.config';
 
+import { DomainEventBusModule } from './common/events/domain-event-bus.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { NonceModule } from './nonce/nonce.module';         // ← NEW
+import { NonceModule } from './nonce/nonce.module';
 import { ReputationModule } from './reputation/reputation.module';
 import { DatabaseModule } from './database.module';
 import { IndexerModule } from './indexer/indexer.module';
@@ -29,7 +30,6 @@ import { AppThrottlerGuard } from './auth/guards/app-throttler.guard';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { PrismaHealthIndicator } from './common/health/prisma.health';
 
-// ← NEW: global exception filter for standardised error responses
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseTransformInterceptor } from './common/interceptors/response.interceptor';
 
@@ -64,10 +64,10 @@ import { ResponseTransformInterceptor } from './common/interceptors/response.int
     TerminusModule,
     HttpModule,
 
-    // Feature modules
+    DomainEventBusModule,
     AuthModule,
     UserModule,
-    NonceModule,           // ← NEW: nonce replay-prevention now wired in
+    NonceModule,
     ReputationModule,
     DatabaseModule,
     IndexerModule,
@@ -81,21 +81,14 @@ import { ResponseTransformInterceptor } from './common/interceptors/response.int
     AppService,
     PrismaHealthIndicator,
 
-    // Global rate limiting — ThrottlerModule config is inert without this guard.
-    // Registered before JwtAuthGuard so excess traffic is rejected cheaply.
     {
       provide: APP_GUARD,
       useClass: AppThrottlerGuard,
     },
-
-    // Global JWT guard — decorators like @Public() opt routes out.
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
-
-    // Global exception filter — all thrown exceptions return ErrorResponseDto.
-    // This replaces the four inconsistent error formats previously in the codebase.
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,

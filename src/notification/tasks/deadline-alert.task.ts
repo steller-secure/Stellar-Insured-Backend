@@ -19,7 +19,9 @@ export class DeadlineAlertTask {
     this.logger.debug('Checking for projects nearing their deadline...');
 
     const now = new Date();
-    const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const twentyFourHoursFromNow = new Date(
+      now.getTime() + 24 * 60 * 60 * 1000,
+    );
 
     const projects = await this.prisma.project.findMany({
       where: {
@@ -49,7 +51,9 @@ export class DeadlineAlertTask {
         continue;
       }
 
-      this.logger.log(`Project ${project.id} is ending in < 24 hours. Notifying contributors.`);
+      this.logger.log(
+        `Project ${project.id} is ending in < 24 hours. Notifying contributors.`,
+      );
 
       for (const contribution of project.contributions) {
         try {
@@ -61,7 +65,9 @@ export class DeadlineAlertTask {
             { projectId: project.id },
           );
         } catch (e) {
-          this.logger.error(`Failed to notify user ${contribution.investorId} of deadline: ${e.message}`);
+          this.logger.error(
+            `Failed to notify user ${contribution.investorId} of deadline: ${e.message}`,
+          );
         }
       }
     }

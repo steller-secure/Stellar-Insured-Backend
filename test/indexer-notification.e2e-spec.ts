@@ -24,13 +24,21 @@ describe('Indexer & Notification Event Flow (E2E)', () => {
         return Promise.resolve(record);
       }),
       findUnique: jest.fn().mockImplementation(({ where }) => {
-        return Promise.resolve({ id: where.id, userId: 'user-uuid-1234', status: 'ACTIVE' });
+        return Promise.resolve({
+          id: where.id,
+          userId: 'user-uuid-1234',
+          status: 'ACTIVE',
+        });
       }),
     },
     notification: {
       create: jest.fn().mockImplementation(({ data }) => {
         dispatchedNotifications.push(data);
-        return Promise.resolve({ id: 'notification-uuid', ...data, createdAt: new Date() });
+        return Promise.resolve({
+          id: 'notification-uuid',
+          ...data,
+          createdAt: new Date(),
+        });
       }),
     },
   };
@@ -47,7 +55,8 @@ describe('Indexer & Notification Event Flow (E2E)', () => {
     await app.init();
 
     indexerService = moduleFixture.get<IndexerService>(IndexerService);
-    notificationService = moduleFixture.get<NotificationService>(NotificationService);
+    notificationService =
+      moduleFixture.get<NotificationService>(NotificationService);
   });
 
   afterEach(() => {
@@ -89,7 +98,7 @@ describe('Indexer & Notification Event Flow (E2E)', () => {
     // Assert 2: Verify the notification module intercepted the lifecycle trigger and dispatched the correct payload
     expect(mockPrismaService.notification.create).toHaveBeenCalled();
     expect(dispatchedNotifications.length).toBe(1);
-    
+
     const triggeredNotification = dispatchedNotifications[0];
     expect(triggeredNotification.userId).toBe('user-uuid-1234');
     expect(triggeredNotification.type).toBe(NotificationType.POLICY_ACTIVATED);

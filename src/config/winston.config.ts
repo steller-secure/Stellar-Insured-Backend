@@ -15,12 +15,13 @@ export const winstonConfig = {
   ),
   transports: [
     new winston.transports.Console({
-      format: process.env.NODE_ENV === 'production'
-        ? winston.format.json()
-        : winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple(),
-          ),
+      format:
+        process.env.NODE_ENV === 'production'
+          ? winston.format.json()
+          : winston.format.combine(
+              winston.format.colorize(),
+              winston.format.simple(),
+            ),
     }),
     new winston.transports.DailyRotateFile({
       filename: 'logs/app-%DATE%.log',

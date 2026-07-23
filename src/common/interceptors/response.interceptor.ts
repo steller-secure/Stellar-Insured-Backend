@@ -1,4 +1,10 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+  Logger,
+} from '@nestjs/common';
 import { Observable, map, catchError } from 'rxjs';
 import { jsonReplacer } from '../utils/json-replacer.util';
 import { SerializationTransformer } from '../utils/serialization.util';
@@ -18,9 +24,12 @@ export class ResponseTransformInterceptor implements NestInterceptor {
     next: CallHandler,
   ): Observable<SuccessResponse<unknown> | unknown> {
     return next.handle().pipe(
-      map((body) => this.formatResponse(body)),
-      catchError((error) => {
-        this.logger.error(`Response serialization error: ${error.message}`, error.stack);
+      map(body => this.formatResponse(body)),
+      catchError(error => {
+        this.logger.error(
+          `Response serialization error: ${error.message}`,
+          error.stack,
+        );
         throw error;
       }),
     );
@@ -58,7 +67,10 @@ export class ResponseTransformInterceptor implements NestInterceptor {
         data: this.serializeSpecialTypes(this.stripSoftDeleteMetadata(body)),
       };
     } catch (error) {
-      this.logger.error(`Error formatting response: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error formatting response: ${error.message}`,
+        error.stack,
+      );
       // Return a safe fallback response if serialization fails
       return {
         success: true,
@@ -71,7 +83,9 @@ export class ResponseTransformInterceptor implements NestInterceptor {
     try {
       return SerializationTransformer.transform(value);
     } catch (error) {
-      this.logger.warn(`Serialization error, falling back to safe serialize: ${error.message}`);
+      this.logger.warn(
+        `Serialization error, falling back to safe serialize: ${error.message}`,
+      );
       return this.safeSerialize(value);
     }
   }
@@ -97,7 +111,9 @@ export class ResponseTransformInterceptor implements NestInterceptor {
     if (typeof value === 'object') {
       try {
         const result: Record<string, unknown> = {};
-        for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+        for (const [key, entry] of Object.entries(
+          value as Record<string, unknown>,
+        )) {
           result[key] = this.safeSerialize(entry);
         }
         return result;

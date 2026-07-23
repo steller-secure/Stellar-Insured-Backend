@@ -9,7 +9,9 @@ export class EncryptionService {
   private readonly activeKeyVersion: string;
 
   constructor(private readonly configService: ConfigService) {
-    const keysConfig = this.configService.get<string>('app.encryptionKeys');
+    const keysConfig =
+      this.configService.get<string>('app.encryptionKeys') ||
+      this.configService.get<string>('ENCRYPTION_KEYS');
     if (!keysConfig) {
       throw new Error('ENCRYPTION_KEYS environment variable is required');
     }
@@ -17,7 +19,6 @@ export class EncryptionService {
     this.keys = new Map();
     let firstVersion = '';
 
-    // Parse format: v1:base64_key,v2:base64_key2
     const keyPairs = keysConfig.split(',');
     for (const pair of keyPairs) {
       const [version, base64Key] = pair.split(':');
@@ -26,7 +27,9 @@ export class EncryptionService {
       }
       const keyBuffer = Buffer.from(base64Key, 'base64');
       if (keyBuffer.length !== 32) {
-        throw new Error(`Encryption key for ${version} must be 32 bytes (256 bits)`);
+        throw new Error(
+          `Encryption key for ${version} must be 32 bytes (256 bits)`,
+        );
       }
       this.keys.set(version, keyBuffer);
       if (!firstVersion) {
@@ -35,19 +38,19 @@ export class EncryptionService {
     }
 
     this.activeKeyVersion = firstVersion;
-    this.logger.log(`Encryption service initialized with key version: ${this.activeKeyVersion}`);
+    this.logger.log(
+      `Encryption service initialized with key version: ${this.activeKeyVersion}`,
+    );
   }
 
-  /**
-   * Encrypt plaintext using AES-256-GCM
-   * Returns format: version:iv:authTag:ciphertext (all hex-encoded except version)
-   */
   encrypt(plainText: string): string {
     const iv = randomBytes(16);
     const key = this.keys.get(this.activeKeyVersion);
 
     if (!key) {
-      throw new Error(`Active encryption key version ${this.activeKeyVersion} not found`);
+      throw new Error(
+        `Active encryption key version ${this.activeKeyVersion} not found`,
+      );
     }
 
     const cipher = createCipheriv('aes-256-gcm', key, iv);
@@ -55,18 +58,15 @@ export class EncryptionService {
     encrypted += cipher.final('hex');
     const authTag = cipher.getAuthTag();
 
-    // Format: version:iv:authTag:ciphertext
     return `${this.activeKeyVersion}:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
   }
 
-  /**
-   * Decrypt ciphertext encrypted with AES-256-GCM
-   * Expected format: version:iv:authTag:ciphertext
-   */
   decrypt(encryptedText: string): string {
     const parts = encryptedText.split(':');
     if (parts.length !== 4) {
-      throw new Error(`Invalid encrypted text format: expected version:iv:authTag:ciphertext`);
+      throw new Error(
+        `Invalid encrypted text format: expected version:iv:authTag:ciphertext`,
+      );
     }
 
     const [version, ivHex, authTagHex, encrypted] = parts;
@@ -88,9 +88,6 @@ export class EncryptionService {
     return decrypted;
   }
 
-  /**
-   * Get the active key version
-   */
   getActiveKeyVersion(): string {
     return this.activeKeyVersion;
   }

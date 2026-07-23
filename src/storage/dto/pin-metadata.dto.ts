@@ -6,7 +6,9 @@ export class PinMetadataDto {
   @IsObject()
   metadata!: Record<string, any>;
 
-  @ApiPropertyOptional({ description: 'Optional friendly name for the metadata' })
+  @ApiPropertyOptional({
+    description: 'Optional friendly name for the metadata',
+  })
   @IsOptional()
   @IsString()
   name?: string;

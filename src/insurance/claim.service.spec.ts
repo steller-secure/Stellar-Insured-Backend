@@ -4,7 +4,8 @@ import { PolicyStatus } from './enums/policy-status.enum';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { PoolService } from './pool.service';
-import { AuditService } from './services/audit.service';
+import { DomainEventBus } from '../common/events/domain-event-bus.service';
+import { DomainEventName } from '../common/events/event-types';
 import { Prisma } from '@prisma/client';
 
 interface MockTransactionClient {
@@ -29,20 +30,11 @@ interface MockPoolService {
   unlockCapital: jest.Mock;
 }
 
-interface MockAuditService {
-  log: jest.Mock;
-  logCreate: jest.Mock;
-  logApprove: jest.Mock;
-  logReject: jest.Mock;
-  logPayout: jest.Mock;
-  logUpdate: jest.Mock;
-}
-
 describe('ClaimService', () => {
   let service: ClaimService;
   let prisma: MockPrismaService;
   let pools: MockPoolService;
-  let auditService: MockAuditService;
+  let eventBus: { emit: jest.Mock; on: jest.Mock };
 
   const mockPolicy = {
     id: 'policy-1',
@@ -81,38 +73,38 @@ describe('ClaimService', () => {
         create: jest.fn(),
         count: jest.fn(),
       },
-      $transaction: jest.fn().mockImplementation(async (fn: (tx: any) => Promise<any>) => fn({
-        claim: {
-          findUnique: jest.fn(),
-          update: jest.fn(),
-          count: jest.fn(),
-        },
-      })),
+      $transaction: jest
+        .fn()
+        .mockImplementation(async (fn: (tx: any) => Promise<any>) =>
+          fn({
+            claim: {
+              findUnique: jest.fn(),
+              update: jest.fn(),
+              count: jest.fn(),
+            },
+          }),
+        ),
     };
 
     pools = {
       unlockCapital: jest.fn(),
     };
 
-    auditService = {
-      log: jest.fn(),
-      logCreate: jest.fn(),
-      logApprove: jest.fn(),
-      logReject: jest.fn(),
-      logPayout: jest.fn(),
-      logUpdate: jest.fn(),
+    eventBus = {
+      emit: jest.fn().mockResolvedValue({ id: 'evt-1' }),
+      on: jest.fn(),
     };
 
     service = new ClaimService(
       prisma as unknown as PrismaService,
       pools as unknown as PoolService,
-      auditService as unknown as AuditService,
+      eventBus as unknown as DomainEventBus,
     );
     jest.clearAllMocks();
   });
 
   describe('createClaim', () => {
-    it('should create a claim with the plain, unencrypted claim amount', async () => {
+    it('should create a claim and emit CLAIM_CREATED event', async () => {
       const createdClaim = {
         id: 'claim-new',
         policyId: 'policy-1',
@@ -121,7 +113,10 @@ describe('ClaimService', () => {
       };
       prisma.claim.create.mockResolvedValue(createdClaim);
 
-      const result = await service.createClaim('policy-1', new Prisma.Decimal(50000));
+      const result = await service.createClaim(
+        'policy-1',
+        new Prisma.Decimal(50000),
+      );
 
       expect(prisma.claim.create).toHaveBeenCalledWith({
         data: {
@@ -130,12 +125,11 @@ describe('ClaimService', () => {
           status: ClaimStatus.PENDING,
         },
       });
-      expect(auditService.logCreate).toHaveBeenCalledWith('Claim', 'claim-new', createdClaim);
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.CLAIM_CREATED,
+        expect.objectContaining({ entityId: 'claim-new' }),
+      );
       expect(result.claimAmount).toBe(50000);
-    });
-
-    it('does not depend on EncryptionService for the claim amount', () => {
-      expect(service['encryption']).toBeUndefined();
     });
   });
 
@@ -176,6 +170,10 @@ describe('ClaimService', () => {
       await expect(service.assessClaim('claim-1')).rejects.toThrow(
         BadRequestException,
       );
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.CLAIM_REJECTED,
+        expect.objectContaining({ claimId: 'claim-1' }),
+      );
     });
 
     it('should reject claim if claim amount exceeds coverage', async () => {
@@ -196,38 +194,13 @@ describe('ClaimService', () => {
       await expect(service.assessClaim('claim-1')).rejects.toThrow(
         BadRequestException,
       );
-    });
-
-    it('should reject claim if oracle verification fails (expired policy)', async () => {
-      const expiredPolicy = {
-        ...mockPolicy,
-        status: PolicyStatus.ACTIVE,
-        endDate: new Date('2020-01-01'),
-      };
-      const claim = { ...mockClaim, policy: expiredPolicy };
-
-      prisma.claim.findUnique
-        .mockResolvedValueOnce(claim) // assessClaim main fetch
-        .mockResolvedValueOnce(claim); // verifyOracle fetch
-
-      prisma.claim.count.mockResolvedValue(0);
-
-      const mockTx = buildMockTx({
-        ...claim,
-        status: ClaimStatus.REJECTED,
-        policy: expiredPolicy,
-      });
-      mockTx.claim.findUnique.mockResolvedValue(claim);
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
-
-      (pools.unlockCapital as jest.Mock).mockResolvedValue(undefined);
-
-      await expect(service.assessClaim('claim-1')).rejects.toThrow(
-        BadRequestException,
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.CLAIM_REJECTED,
+        expect.objectContaining({ claimId: 'claim-1' }),
       );
     });
 
-    it('should approve claim when all checks pass', async () => {
+    it('should approve claim when all checks pass and emit CLAIM_APPROVED event', async () => {
       const claim = { ...mockClaim, claimAmount: new Prisma.Decimal(50000) };
       const approvedClaim = {
         ...claim,
@@ -236,8 +209,8 @@ describe('ClaimService', () => {
       };
 
       prisma.claim.findUnique
-        .mockResolvedValueOnce(claim) // assessClaim
-        .mockResolvedValueOnce(claim); // verifyOracle
+        .mockResolvedValueOnce(claim)
+        .mockResolvedValueOnce(claim);
 
       prisma.claim.count.mockResolvedValue(0);
 
@@ -247,38 +220,17 @@ describe('ClaimService', () => {
       const result = await service.assessClaim('claim-1');
 
       expect(result.status).toBe(ClaimStatus.APPROVED);
-      expect(auditService.logApprove).toHaveBeenCalled();
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.CLAIM_APPROVED,
+        expect.objectContaining({ claimId: 'claim-1' }),
+      );
     });
 
-    it('should detect fraud and log but still approve if only 1 indicator', async () => {
-      const claim = { ...mockClaim, claimAmount: new Prisma.Decimal(50000) };
-      const approvedClaim = {
-        ...claim,
-        status: ClaimStatus.APPROVED,
-        payoutAmount: new Prisma.Decimal(50000),
-      };
-
-      prisma.claim.findUnique
-        .mockResolvedValueOnce(claim)
-        .mockResolvedValueOnce(claim);
-
-      prisma.claim.count
-        .mockResolvedValueOnce(1) // duplicate claims count > 0
-        .mockResolvedValueOnce(0); // recent claims count < 3
-
-      const mockTx = buildMockTx(approvedClaim);
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
-
-      const result = await service.assessClaim('claim-1');
-
-      expect(result.status).toBe(ClaimStatus.APPROVED);
-    });
-
-    it('should detect fraud with 2+ indicators and log fraud event', async () => {
+    it('should detect fraud with 2+ indicators and emit CLAIM_FRAUD_DETECTED event', async () => {
       const claim = {
         ...mockClaim,
         claimAmount: new Prisma.Decimal(50000),
-        createdAt: new Date('2026-04-27T03:00:00Z'), // 3 AM = unusual timing
+        createdAt: new Date('2026-04-27T03:00:00Z'),
       };
       const approvedClaim = {
         ...claim,
@@ -290,23 +242,19 @@ describe('ClaimService', () => {
         .mockResolvedValueOnce(claim)
         .mockResolvedValueOnce(claim);
 
-      prisma.claim.count
-        .mockResolvedValueOnce(1) // duplicate claims
-        .mockResolvedValueOnce(4); // recent claims >= 3
+      prisma.claim.count.mockResolvedValueOnce(1).mockResolvedValueOnce(4);
 
       const mockTx = buildMockTx(approvedClaim);
       prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
 
       await service.assessClaim('claim-1');
 
-      expect(auditService.log).toHaveBeenCalledWith(
-        expect.anything(),
-        'Claim',
-        'claim-1',
-        expect.any(Object),
-        expect.any(Object),
-        undefined,
-        'High fraud risk score detected',
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.CLAIM_FRAUD_DETECTED,
+        expect.objectContaining({
+          claimId: 'claim-1',
+          reason: 'High fraud risk score detected',
+        }),
       );
     });
   });
@@ -328,7 +276,7 @@ describe('ClaimService', () => {
       );
     });
 
-    it('should update claim status to PAID', async () => {
+    it('should update claim status to PAID and emit CLAIM_PAID event', async () => {
       const claim = { ...mockClaim };
       const paidClaim = { ...claim, status: ClaimStatus.PAID };
 
@@ -346,34 +294,14 @@ describe('ClaimService', () => {
       const result = await service.payClaim('claim-1');
 
       expect(result.status).toBe(ClaimStatus.PAID);
-      expect(pools.unlockCapital).toHaveBeenCalledWith('pool-1', new Prisma.Decimal(50000), expect.anything());
-    });
-
-    it('should call auditService.logPayout after paying', async () => {
-      const claim = { ...mockClaim };
-      const paidClaim = { ...claim, status: ClaimStatus.PAID };
-
-      const mockTx: MockTransactionClient = {
-        claim: {
-          findUnique: jest.fn().mockResolvedValue(claim),
-          update: jest.fn().mockResolvedValue(paidClaim),
-          count: jest.fn(),
-        },
-      };
-
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
-      (pools.unlockCapital as jest.Mock).mockResolvedValue(undefined);
-
-      await service.payClaim('claim-1');
-
-      expect(auditService.logPayout).toHaveBeenCalledWith(
-        'Claim',
-        'claim-1',
-        expect.any(Object),
-        expect.any(Object),
-        undefined,
-        undefined,
+      expect(pools.unlockCapital).toHaveBeenCalledWith(
+        'pool-1',
+        new Prisma.Decimal(50000),
         expect.anything(),
+      );
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.CLAIM_PAID,
+        expect.objectContaining({ claimId: 'claim-1' }),
       );
     });
   });

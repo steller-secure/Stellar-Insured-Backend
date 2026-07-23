@@ -13,7 +13,9 @@ describe('sanitization.util', () => {
     });
 
     it('should strip HTML tags', () => {
-      expect(sanitizeString('<script>alert("xss")</script>')).toBe('alert("xss")');
+      expect(sanitizeString('<script>alert("xss")</script>')).toBe(
+        'alert("xss")',
+      );
     });
 
     it('should strip self-closing tags', () => {

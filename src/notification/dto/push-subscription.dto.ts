@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsObject, IsOptional, ValidateNested, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsObject,
+  IsOptional,
+  ValidateNested,
+  IsNotEmpty,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PushSubscriptionKeysDto {
@@ -20,13 +26,18 @@ export class PushSubscriptionDto {
   @IsNotEmpty()
   endpoint: string;
 
-  @ApiProperty({ description: 'Encryption keys for the push subscription', type: PushSubscriptionKeysDto })
+  @ApiProperty({
+    description: 'Encryption keys for the push subscription',
+    type: PushSubscriptionKeysDto,
+  })
   @IsObject()
   @ValidateNested()
   @Type(() => PushSubscriptionKeysDto)
   keys: PushSubscriptionKeysDto;
 
-  @ApiPropertyOptional({ description: 'Optional expiration timestamp for the subscription' })
+  @ApiPropertyOptional({
+    description: 'Optional expiration timestamp for the subscription',
+  })
   @IsOptional()
   @IsString()
   expirationTime?: string;

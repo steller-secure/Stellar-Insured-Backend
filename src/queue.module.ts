@@ -4,7 +4,6 @@ import { BullModule } from '@nestjs/bull';
 import { QUEUE_NAMES } from './notification/constants/queue.constants';
 import { bullConfig } from './config/bull.config';
 
-
 @Module({
   imports: [
     BullModule.forRootAsync({

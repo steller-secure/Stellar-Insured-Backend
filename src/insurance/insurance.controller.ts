@@ -1,4 +1,11 @@
-import { Controller, Post, Param, Body, UseInterceptors, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Param,
+  Body,
+  UseInterceptors,
+  Get,
+} from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { InsuranceService } from './insurance.service';
 import { ClaimService } from './claim.service';
@@ -22,7 +29,12 @@ export class InsuranceController {
   @Post('purchase')
   @UseInterceptors(IdempotencyInterceptor)
   async purchase(@Body() body: PurchasePolicyDto) {
-    const policy = await this.insurance.purchasePolicy(body.userId, body.poolId, body.riskType, body.coverageAmount);
+    const policy = await this.insurance.purchasePolicy(
+      body.userId,
+      body.poolId,
+      body.riskType,
+      body.coverageAmount,
+    );
     return SerializationTransformer.transform(policy);
   }
 
@@ -49,7 +61,11 @@ export class InsuranceController {
   @Throttle({ admin: { limit: 20, ttl: 60000 } }) // 20 contracts per minute for admins
   @UseInterceptors(IdempotencyInterceptor)
   async createReinsurance(@Body() body: CreateReinsuranceDto) {
-    const contract = await this.reinsurance.createContract(body.poolId, body.coverageLimit, body.premiumRate);
+    const contract = await this.reinsurance.createContract(
+      body.poolId,
+      body.coverageLimit,
+      body.premiumRate,
+    );
     return SerializationTransformer.transform(contract);
   }
 }

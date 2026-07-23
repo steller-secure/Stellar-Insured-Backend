@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { rpc as SorobanRpc } from 'stellar-sdk';
@@ -6,7 +11,11 @@ import { PrismaService } from '../../prisma.service';
 import { LedgerTrackerService } from './ledger-tracker.service';
 import { EventHandlerService } from './event-handler.service';
 import { XdrDecoderService } from './xdr-decoder.service';
-import { SorobanEvent, ParsedContractEvent, ContractEventType } from '../types/event-types';
+import {
+  SorobanEvent,
+  ParsedContractEvent,
+  ContractEventType,
+} from '../types/event-types';
 import { LedgerInfo } from '../types/ledger.types';
 
 /**
@@ -41,10 +50,22 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
       'STELLAR_RPC_URL',
       'https://soroban-testnet.stellar.org',
     );
-    this.pollIntervalMs = this.configService.get<number>('INDEXER_POLL_INTERVAL_MS', 5000);
-    this.maxEventsPerFetch = this.configService.get<number>('INDEXER_MAX_EVENTS_PER_FETCH', 100);
-    this.retryAttempts = this.configService.get<number>('INDEXER_RETRY_ATTEMPTS', 3);
-    this.retryDelayMs = this.configService.get<number>('INDEXER_RETRY_DELAY_MS', 1000);
+    this.pollIntervalMs = this.configService.get<number>(
+      'INDEXER_POLL_INTERVAL_MS',
+      5000,
+    );
+    this.maxEventsPerFetch = this.configService.get<number>(
+      'INDEXER_MAX_EVENTS_PER_FETCH',
+      100,
+    );
+    this.retryAttempts = this.configService.get<number>(
+      'INDEXER_RETRY_ATTEMPTS',
+      3,
+    );
+    this.retryDelayMs = this.configService.get<number>(
+      'INDEXER_RETRY_DELAY_MS',
+      1000,
+    );
 
     // Initialize RPC client
     this.rpc = new SorobanRpc.Server(rpcUrl, {
@@ -56,7 +77,9 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log(`Indexer initialized for ${this.network} network`);
     this.logger.log(`RPC URL: ${rpcUrl}`);
-    this.logger.log(`Monitoring contracts: ${this.contractIds.join(', ') || 'none configured'}`);
+    this.logger.log(
+      `Monitoring contracts: ${this.contractIds.join(', ') || 'none configured'}`,
+    );
   }
 
   /**
@@ -65,16 +88,22 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
   private getContractIds(): string[] {
     const contracts: string[] = [];
 
-    const projectLaunch = this.configService.get<string>('PROJECT_LAUNCH_CONTRACT_ID');
+    const projectLaunch = this.configService.get<string>(
+      'PROJECT_LAUNCH_CONTRACT_ID',
+    );
     if (projectLaunch) contracts.push(projectLaunch);
 
     const escrow = this.configService.get<string>('ESCROW_CONTRACT_ID');
     if (escrow) contracts.push(escrow);
 
-    const profitDist = this.configService.get<string>('PROFIT_DISTRIBUTION_CONTRACT_ID');
+    const profitDist = this.configService.get<string>(
+      'PROFIT_DISTRIBUTION_CONTRACT_ID',
+    );
     if (profitDist) contracts.push(profitDist);
 
-    const subscription = this.configService.get<string>('SUBSCRIPTION_POOL_CONTRACT_ID');
+    const subscription = this.configService.get<string>(
+      'SUBSCRIPTION_POOL_CONTRACT_ID',
+    );
     if (subscription) contracts.push(subscription);
 
     const governance = this.configService.get<string>('GOVERNANCE_CONTRACT_ID');
@@ -135,10 +164,14 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
       // Register dynamic interval using config value
       const callback = () => this.scheduledPoll();
-      const interval = setInterval(callback, this.pollIntervalMs); this.schedulerRegistry.addInterval('indexer-poll', interval);
+      const interval = setInterval(callback, this.pollIntervalMs);
+      this.schedulerRegistry.addInterval('indexer-poll', interval);
       this.logger.log(`Registered poll interval: ${this.pollIntervalMs}ms`);
     } catch (error) {
-      this.logger.error(`Failed to initialize indexer: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to initialize indexer: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -156,7 +189,9 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
    * @param intervalMs New interval in milliseconds
    */
   updatePollInterval(intervalMs: number): void {
-    this.logger.log(`Updating poll interval from ${this.pollIntervalMs}ms to ${intervalMs}ms`);
+    this.logger.log(
+      `Updating poll interval from ${this.pollIntervalMs}ms to ${intervalMs}ms`,
+    );
 
     // Remove existing interval
     try {
@@ -167,7 +202,8 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
     // Register new interval
     const callback = () => this.scheduledPoll();
-    const interval = setInterval(callback, intervalMs); this.schedulerRegistry.addInterval('indexer-poll', interval);
+    const interval = setInterval(callback, intervalMs);
+    this.schedulerRegistry.addInterval('indexer-poll', interval);
 
     // Update the stored value
     this.pollIntervalMs = intervalMs;
@@ -201,11 +237,15 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
       // Check if there's anything to process
       if (startLedger > latestLedger) {
-        this.logger.debug(`No new ledgers. Current: ${startLedger - 1}, Latest: ${latestLedger}`);
+        this.logger.debug(
+          `No new ledgers. Current: ${startLedger - 1}, Latest: ${latestLedger}`,
+        );
         return;
       }
 
-      this.logger.log(`Polling events from ledger ${startLedger} to ${latestLedger}`);
+      this.logger.log(
+        `Polling events from ledger ${startLedger} to ${latestLedger}`,
+      );
 
       // Fetch events with retry logic
       const events = await this.fetchEventsWithRetry(startLedger, latestLedger);
@@ -236,30 +276,46 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
           }
         } catch (error) {
           errorCount++;
-          this.logger.error(`Failed to process event ${event.id}: ${error.message}`);
+          this.logger.error(
+            `Failed to process event ${event.id}: ${error.message}`,
+          );
 
           // Continue processing other events even if one fails
           // But log the error for monitoring
-          await this.ledgerTracker.logError(`Event processing failed: ${event.id}`, {
-            eventId: event.id,
-            error: error.message,
-          });
+          await this.ledgerTracker.logError(
+            `Event processing failed: ${event.id}`,
+            {
+              eventId: event.id,
+              error: error.message,
+            },
+          );
         }
       }
 
       // Only advance cursor to the last successfully processed ledger
       // Never skip past ledgers with unprocessed/errored events
-      if (lastSuccessfulLedger > ((await this.ledgerTracker.getLastCursor())?.lastLedgerSeq ?? 0)) {
+      if (
+        lastSuccessfulLedger >
+        ((await this.ledgerTracker.getLastCursor())?.lastLedgerSeq ?? 0)
+      ) {
         await this.ledgerTracker.updateCursor(lastSuccessfulLedger);
       }
 
       // Log progress
-      await this.ledgerTracker.logProgress(lastSuccessfulLedger, latestLedger, processedCount);
+      await this.ledgerTracker.logProgress(
+        lastSuccessfulLedger,
+        latestLedger,
+        processedCount,
+      );
 
-      this.logger.log(`Processed ${processedCount}/${events.length} events (${errorCount} errors)`);
+      this.logger.log(
+        `Processed ${processedCount}/${events.length} events (${errorCount} errors)`,
+      );
     } catch (error) {
       this.logger.error(`Error in poll cycle: ${error.message}`, error.stack);
-      await this.ledgerTracker.logError('Poll cycle failed', { error: error.message });
+      await this.ledgerTracker.logError('Poll cycle failed', {
+        error: error.message,
+      });
     } finally {
       this.isRunning = false;
     }
@@ -279,7 +335,9 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
         return await this.fetchEvents(startLedger, endLedger);
       } catch (error) {
         lastError = error;
-        this.logger.warn(`Fetch attempt ${attempt}/${this.retryAttempts} failed: ${error.message}`);
+        this.logger.warn(
+          `Fetch attempt ${attempt}/${this.retryAttempts} failed: ${error.message}`,
+        );
 
         if (attempt < this.retryAttempts) {
           const delay = this.retryDelayMs * Math.pow(2, attempt - 1); // Exponential backoff
@@ -297,7 +355,10 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
   /**
    * Fetch events from Soroban RPC
    */
-  private async fetchEvents(startLedger: number, endLedger: number): Promise<SorobanEvent[]> {
+  private async fetchEvents(
+    startLedger: number,
+    endLedger: number,
+  ): Promise<SorobanEvent[]> {
     const events: SorobanEvent[] = [];
     let cursor: string | undefined;
 
@@ -339,7 +400,9 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
       // Safety check - don't fetch too many events at once
       if (events.length >= this.maxEventsPerFetch * 5) {
-        this.logger.warn(`Event fetch limit reached. Processing ${events.length} events.`);
+        this.logger.warn(
+          `Event fetch limit reached. Processing ${events.length} events.`,
+        );
         break;
       }
     } while (cursor);
@@ -444,8 +507,10 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
           reason,
         },
       })
-      .catch((err) => {
-        this.logger.error(`Failed to quarantine event ${event.id}: ${err.message}`);
+      .catch(err => {
+        this.logger.error(
+          `Failed to quarantine event ${event.id}: ${err.message}`,
+        );
       });
   }
 
@@ -471,7 +536,9 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
       // Decode event data from XDR value
       const decoded = this.xdrDecoder.decode(event.value, eventType);
-      const quarantined = !!(decoded.data && (decoded.data as any)._quarantined);
+      const quarantined = !!(
+        decoded.data && (decoded.data as any)._quarantined
+      );
 
       return {
         eventId: event.id,
@@ -495,7 +562,9 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
    */
   private parseEventType(symbol: string): ContractEventType | null {
     // Map symbol to event type enum
-    const eventType = Object.values(ContractEventType).find((type) => type === symbol);
+    const eventType = Object.values(ContractEventType).find(
+      type => type === symbol,
+    );
     return eventType || null;
   }
 
@@ -527,6 +596,6 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
    * Utility: Sleep for specified milliseconds
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

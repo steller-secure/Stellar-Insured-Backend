@@ -6,12 +6,10 @@ import {
 } from '@nestjs/common';
 import { ClaimStatus } from './enums/claim-status.enum';
 import { PolicyStatus } from './enums/policy-status.enum';
-import { AuditAction } from './enums/audit-action.enum';
 import { PrismaService } from '../prisma.service';
 import { PoolService } from './pool.service';
-import { AuditService } from './services/audit.service';
-import { ReputationService } from '../reputation/reputation.service';
-import { REPUTATION_DELTAS } from '../reputation/reputation.constants';
+import { DomainEventBus } from '../common/events/domain-event-bus.service';
+import { DomainEventName } from '../common/events/event-types';
 import { Claim, InsurancePolicy, Prisma } from '@prisma/client';
 
 type ClaimWithPolicy = Claim & { policy: InsurancePolicy };
@@ -23,8 +21,7 @@ export class ClaimService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pools: PoolService,
-    private readonly auditService: AuditService,
-    private readonly reputationService: ReputationService,
+    private readonly eventBus: DomainEventBus,
   ) {}
 
   async assessClaim(claimId: string): Promise<ClaimWithPolicy> {
@@ -46,79 +43,55 @@ export class ClaimService {
 
     if (policy.status !== PolicyStatus.ACTIVE) {
       const reason = `Policy is not active: ${policy.status}`;
-      await this.updateStatus(
-        claimId,
-        ClaimStatus.REJECTED,
-        reason,
-        'system',
-      );
+      await this.updateStatus(claimId, ClaimStatus.REJECTED, reason, 'system');
       throw new BadRequestException('Cannot approve claim for inactive policy');
     }
 
-    if ((claim.claimAmount as Prisma.Decimal).gt(policy.coverageAmount as Prisma.Decimal)) {
+    if (
+      (claim.claimAmount as Prisma.Decimal).gt(
+        policy.coverageAmount as Prisma.Decimal,
+      )
+    ) {
       const reason = 'Claim amount exceeds coverage';
-      await this.updateStatus(
-        claimId,
-        ClaimStatus.REJECTED,
-        reason,
-        'system',
+      await this.updateStatus(claimId, ClaimStatus.REJECTED, reason, 'system');
+      throw new BadRequestException(
+        'Claim amount exceeds policy coverage amount',
       );
-      throw new BadRequestException('Claim amount exceeds policy coverage amount');
     }
 
     const isFraudulent = await this.runFraudDetection(claim);
     if (isFraudulent) {
       this.logger.warn(`Fraud detection triggered for claim ${claimId}`);
-      await this.auditService.log(
-        AuditAction.FRAUD_DETECTED,
-        'Claim',
+      await this.eventBus.emit(DomainEventName.CLAIM_FRAUD_DETECTED, {
         claimId,
+        userId: policy.userId,
         beforeState,
-        claim,
-        undefined,
-        'High fraud risk score detected',
-      );
-      // Adjust reputation for fraud detection
-      await this.reputationService.adjustReputation(
-        policy.userId,
-        REPUTATION_DELTAS.FRAUD_DETECTED,
-        `Fraud detected on claim ${claimId}`,
-      );
+        afterState: claim,
+        reason: 'High fraud risk score detected',
+      });
     }
 
     const oracleVerified = await this.verifyOracle(claimId);
     if (!oracleVerified) {
       const reason = 'Oracle verification failed';
-      await this.updateStatus(
-        claimId,
-        ClaimStatus.REJECTED,
-        reason,
-        'system',
-      );
+      await this.updateStatus(claimId, ClaimStatus.REJECTED, reason, 'system');
       throw new BadRequestException('Oracle verification failed');
     }
 
     const updatedClaim = await this.prisma.$transaction(async tx => {
-      const result = await tx.claim.update({
+      return (await tx.claim.update({
         where: { id: claimId },
         data: { status: ClaimStatus.APPROVED, payoutAmount: claim.claimAmount },
         include: { policy: true },
-      });
-      await this.auditService.logApprove(
-        'Claim',
-        claimId,
-        beforeState,
-        result,
-      );
-      return result;
+      })) as ClaimWithPolicy;
     });
 
-    // Adjust reputation after the transaction commits
-    await this.reputationService.adjustReputation(
-      policy.userId,
-      REPUTATION_DELTAS.CLAIM_APPROVED,
-      `Claim ${claimId} approved`,
-    );
+    await this.eventBus.emit(DomainEventName.CLAIM_APPROVED, {
+      claimId,
+      userId: policy.userId,
+      beforeState,
+      afterState: updatedClaim,
+    });
 
     return updatedClaim;
   }
@@ -131,6 +104,8 @@ export class ClaimService {
     additionalData: { payoutAmount?: Prisma.Decimal } = {},
     tx?: Prisma.TransactionClient,
   ): Promise<ClaimWithPolicy> {
+    let beforeStateSnapshot: ClaimWithPolicy | null = null;
+
     const execute = async (client: Prisma.TransactionClient) => {
       const existing = (await client.claim.findUnique({
         where: { id: claimId },
@@ -138,7 +113,7 @@ export class ClaimService {
       })) as ClaimWithPolicy | null;
       if (!existing) throw new NotFoundException('Claim not found');
 
-      const beforeState = { ...existing };
+      beforeStateSnapshot = { ...existing };
       const updated = (await client.claim.update({
         where: { id: claimId },
         data: {
@@ -150,20 +125,11 @@ export class ClaimService {
         include: { policy: true },
       })) as ClaimWithPolicy;
 
-      if (status === ClaimStatus.REJECTED) {
-        if (existing.policy) {
-          const claimDecimal = new Prisma.Decimal(existing.claimAmount);
-          await this.pools.unlockCapital(existing.policy.poolId, claimDecimal, tx);
-        }
-        await this.auditService.logReject('Claim', claimId, beforeState, updated, reason, tx);
-      } else if (status === ClaimStatus.APPROVED) {
-        await this.auditService.logApprove(
-          'Claim',
-          updated.id,
-          beforeState,
-          updated,
-          undefined,
-          reason,
+      if (status === ClaimStatus.REJECTED && existing.policy) {
+        const claimDecimal = new Prisma.Decimal(existing.claimAmount);
+        await this.pools.unlockCapital(
+          existing.policy.poolId,
+          claimDecimal,
           tx,
         );
       }
@@ -171,24 +137,26 @@ export class ClaimService {
       return updated;
     };
 
-    const result = tx ? await execute(tx) : await this.prisma.$transaction(execute);
+    const result = tx
+      ? await execute(tx)
+      : await this.prisma.$transaction(execute);
 
-    // Adjust reputation outside the transaction so it doesn't block the commit.
-    // Only fires for REJECTED status; APPROVED is handled directly in assessClaim.
     if (status === ClaimStatus.REJECTED) {
-      const userId = result.policy?.userId;
-      if (userId) {
-        try {
-          await this.reputationService.adjustReputation(
-            userId,
-            REPUTATION_DELTAS.CLAIM_REJECTED,
-            `Claim ${claimId} rejected: ${reason}`,
-          );
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          this.logger.error(`Failed to adjust reputation for claim rejection ${claimId}: ${msg}`);
-        }
-      }
+      await this.eventBus.emit(DomainEventName.CLAIM_REJECTED, {
+        claimId,
+        userId: result.policy?.userId,
+        beforeState: beforeStateSnapshot,
+        afterState: result,
+        reason,
+      });
+    } else if (status === ClaimStatus.APPROVED) {
+      await this.eventBus.emit(DomainEventName.CLAIM_APPROVED, {
+        claimId: result.id,
+        userId: result.policy?.userId ?? '',
+        beforeState: beforeStateSnapshot,
+        afterState: result,
+        reason,
+      });
     }
 
     return result;
@@ -245,7 +213,10 @@ export class ClaimService {
     return fraudIndicators.length >= 2;
   }
 
-  private async verifyOracle(claimId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
+  private async verifyOracle(
+    claimId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
     try {
       const client = tx ?? this.prisma;
       const claim = (await client.claim.findUnique({
@@ -266,20 +237,17 @@ export class ClaimService {
       const claimDecimal = claim.claimAmount as Prisma.Decimal;
       const coverageDecimal = policy.coverageAmount as Prisma.Decimal;
 
-      if (claimDecimal.lte(new Prisma.Decimal(0)) || claimDecimal.gt(coverageDecimal)) {
+      if (
+        claimDecimal.lte(new Prisma.Decimal(0)) ||
+        claimDecimal.gt(coverageDecimal)
+      ) {
         return false;
       }
 
-      await this.auditService.log(
-        AuditAction.ORACLE_VERIFIED,
-        'Claim',
+      await this.eventBus.emit(DomainEventName.CLAIM_ORACLE_VERIFIED, {
         claimId,
-        undefined,
-        undefined,
-        undefined,
-        'Oracle verification successful',
-        tx,
-      );
+        reason: 'Oracle verification successful',
+      });
 
       return true;
     } catch (error: unknown) {
@@ -290,38 +258,42 @@ export class ClaimService {
   }
 
   async payClaim(claimId: string): Promise<ClaimWithPolicy> {
-    return await this.prisma.$transaction(async tx => {
-      const claim = (await tx.claim.findUnique({
-        where: { id: claimId },
-        include: { policy: true },
-      })) as ClaimWithPolicy | null;
-      if (!claim) {
-        throw new NotFoundException(`Claim with ID ${claimId} not found`);
-      }
-      const beforeState = { ...claim };
-      const updatedClaim = (await tx.claim.update({
-        where: { id: claimId },
-        data: { status: ClaimStatus.PAID },
-        include: { policy: true },
-      })) as ClaimWithPolicy;
-      if (claim.policy) {
-        const claimDecimal = new Prisma.Decimal(claim.claimAmount);
-        await this.pools.unlockCapital(claim.policy.poolId, claimDecimal, tx);
-      }
-      await this.auditService.logPayout(
-        'Claim',
-        claimId,
-        beforeState,
-        updatedClaim,
-        undefined,
-        undefined,
-        tx,
-      );
-      return updatedClaim;
+    const { updatedClaim, beforeState } = await this.prisma.$transaction(
+      async tx => {
+        const claim = (await tx.claim.findUnique({
+          where: { id: claimId },
+          include: { policy: true },
+        })) as ClaimWithPolicy | null;
+        if (!claim) {
+          throw new NotFoundException(`Claim with ID ${claimId} not found`);
+        }
+        const beforeState = { ...claim };
+        const updatedClaim = (await tx.claim.update({
+          where: { id: claimId },
+          data: { status: ClaimStatus.PAID },
+          include: { policy: true },
+        })) as ClaimWithPolicy;
+        if (claim.policy) {
+          const claimDecimal = new Prisma.Decimal(claim.claimAmount);
+          await this.pools.unlockCapital(claim.policy.poolId, claimDecimal, tx);
+        }
+        return { updatedClaim, beforeState };
+      },
+    );
+
+    await this.eventBus.emit(DomainEventName.CLAIM_PAID, {
+      claimId,
+      beforeState,
+      afterState: updatedClaim,
     });
+
+    return updatedClaim;
   }
 
-  async createClaim(policyId: string, claimAmount: Prisma.Decimal): Promise<Claim> {
+  async createClaim(
+    policyId: string,
+    claimAmount: Prisma.Decimal,
+  ): Promise<Claim> {
     const savedClaim = await this.prisma.claim.create({
       data: {
         policyId,
@@ -329,7 +301,12 @@ export class ClaimService {
         status: ClaimStatus.PENDING,
       },
     });
-    await this.auditService.logCreate('Claim', savedClaim.id, savedClaim);
+
+    await this.eventBus.emit(DomainEventName.CLAIM_CREATED, {
+      entityId: savedClaim.id,
+      entity: savedClaim,
+    });
+
     return savedClaim;
   }
 }

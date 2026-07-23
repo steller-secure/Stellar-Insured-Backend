@@ -54,7 +54,9 @@ export class CreateMilestoneDto {
   @ApiPropertyOptional()
   description?: string;
 
-  @ApiProperty({ description: 'Funding amount as string (will be converted to BigInt)' })
+  @ApiProperty({
+    description: 'Funding amount as string (will be converted to BigInt)',
+  })
   fundingAmount: string;
 }
 
@@ -68,7 +70,9 @@ export class UpdateMilestoneDto {
   @ApiPropertyOptional()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Funding amount as string (will be converted to BigInt)' })
+  @ApiPropertyOptional({
+    description: 'Funding amount as string (will be converted to BigInt)',
+  })
   fundingAmount?: string;
 
   @ApiPropertyOptional({ enum: MilestoneStatus })

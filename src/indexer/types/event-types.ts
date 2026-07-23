@@ -116,7 +116,8 @@ export interface ParsedContractEvent {
  * Decoded event payload. May be a known structured shape (one of the
  * `*Event` interfaces below) or, on decode failure, a quarantine marker.
  */
-export type DecodedEventData = Record<string, unknown> & Partial<QuarantineMarker>;
+export type DecodedEventData = Record<string, unknown> &
+  Partial<QuarantineMarker>;
 
 /**
  * Marker attached to payloads that could not be decoded. These are persisted

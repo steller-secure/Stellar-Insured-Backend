@@ -3,7 +3,11 @@ import { Process, Processor } from '@nestjs/bull';
 import * as sgMail from '@sendgrid/mail';
 import { Job } from 'bull';
 import { PrismaService } from '../../prisma.service';
-import { QUEUE_NAMES, EMAIL_MAX_ATTEMPTS, EmailJobData } from '../constants/queue.constants';
+import {
+  QUEUE_NAMES,
+  EMAIL_MAX_ATTEMPTS,
+  EmailJobData,
+} from '../constants/queue.constants';
 
 import { ConfigService } from '@nestjs/config';
 
@@ -18,8 +22,11 @@ export class EmailService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.apiKey = this.configService.get<string>('notification.sendgrid.apiKey') || '';
-    this.fromEmail = this.configService.get<string>('notification.sendgrid.fromEmail') || 'noreply@novafund.xyz';
+    this.apiKey =
+      this.configService.get<string>('notification.sendgrid.apiKey') || '';
+    this.fromEmail =
+      this.configService.get<string>('notification.sendgrid.fromEmail') ||
+      'noreply@novafund.xyz';
     sgMail.setApiKey(this.apiKey);
   }
 

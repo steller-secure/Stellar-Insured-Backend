@@ -1,9 +1,17 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { createSoftDeleteMiddleware } from './prisma.soft-delete.middleware';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
 
   async onModuleInit() {
@@ -24,11 +32,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$disconnect();
     this.logger.log('Disconnected from database');
   }
-    /**
+  /**
    * Lightweight liveness check used by the Prisma health indicator.
    * Throws if the connection is down; callers should catch and translate.
    */
-    async ping(): Promise<void> {
-      await this.$queryRaw`SELECT 1`;
-    }
+  async ping(): Promise<void> {
+    await this.$queryRaw`SELECT 1`;
+  }
 }

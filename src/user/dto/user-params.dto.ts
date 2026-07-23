@@ -1,6 +1,9 @@
 import { IsString, IsNotEmpty, MaxLength, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { sanitizeString, isValidCuid } from '../../common/utils/sanitization.util';
+import {
+  sanitizeString,
+  isValidCuid,
+} from '../../common/utils/sanitization.util';
 
 export class UserParamsDto {
   @IsString()

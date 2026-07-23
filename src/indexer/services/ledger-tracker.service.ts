@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma.service';
 import { SoftDeleteService } from '../../prisma.soft-delete.service';
-import { LedgerCursor, LedgerInfo, ReorgDetectionResult } from '../types/ledger.types';
+import {
+  LedgerCursor,
+  LedgerInfo,
+  ReorgDetectionResult,
+} from '../types/ledger.types';
 
 /**
  * Service for tracking ledger state and handling re-orgs
@@ -19,7 +23,10 @@ export class LedgerTrackerService {
     private readonly configService: ConfigService,
   ) {
     this.network = this.configService.get<string>('STELLAR_NETWORK', 'testnet');
-    this.reorgDepthThreshold = this.configService.get<number>('INDEXER_REORG_DEPTH_THRESHOLD', 5);
+    this.reorgDepthThreshold = this.configService.get<number>(
+      'INDEXER_REORG_DEPTH_THRESHOLD',
+      5,
+    );
   }
 
   /**
@@ -129,7 +136,9 @@ export class LedgerTrackerService {
       return {
         hasReorg,
         reorgDepth: hasReorg ? 1 : 0,
-        lastValidLedger: hasReorg ? currentLedger.sequence - 1 : currentLedger.sequence,
+        lastValidLedger: hasReorg
+          ? currentLedger.sequence - 1
+          : currentLedger.sequence,
         newLatestLedger: currentLedger.sequence,
       };
     }
@@ -173,9 +182,15 @@ export class LedgerTrackerService {
     );
 
     // Calculate rollback depth (add buffer for safety)
-    const rollbackDepth = Math.min(reorgResult.reorgDepth + 2, this.reorgDepthThreshold);
+    const rollbackDepth = Math.min(
+      reorgResult.reorgDepth + 2,
+      this.reorgDepthThreshold,
+    );
 
-    const safeLedgerSeq = Math.max(0, reorgResult.lastValidLedger - rollbackDepth);
+    const safeLedgerSeq = Math.max(
+      0,
+      reorgResult.lastValidLedger - rollbackDepth,
+    );
 
     // Purge processed events from the rolled-back ledgers. This must be an
     // explicit hard delete: eventId is unique, so a soft-deleted row would
@@ -255,7 +270,9 @@ export class LedgerTrackerService {
    */
   async getStartLedger(latestLedger: number): Promise<number> {
     const cursor = await this.getLastCursor();
-    const configuredStart = this.configService.get<number>('INDEXER_START_LEDGER');
+    const configuredStart = this.configService.get<number>(
+      'INDEXER_START_LEDGER',
+    );
 
     if (cursor) {
       // Resume from last processed + 1
@@ -315,7 +332,10 @@ export class LedgerTrackerService {
    * @param message Error message
    * @param metadata Additional context
    */
-  async logError(message: string, metadata?: Record<string, unknown>): Promise<void> {
+  async logError(
+    message: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
     this.logger.error(message, metadata);
 
     await this.prisma.indexerLog.create({

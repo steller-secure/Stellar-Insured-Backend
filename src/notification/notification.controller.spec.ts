@@ -3,6 +3,8 @@ import { NotFoundException } from '@nestjs/common';
 import { NotificationController } from './notification.controller';
 import { PrismaService } from '../prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
+import { NotificationService } from './services/notification.service';
+import { DomainEventBus } from '../common/events/domain-event-bus.service';
 
 const prisma = {
   user: {
@@ -18,6 +20,15 @@ const encryption = {
   encrypt: jest.fn((value: string) => `encrypted:${value}`),
 };
 
+const notificationService = {
+  notify: jest.fn(),
+};
+
+const eventBus = {
+  emit: jest.fn().mockResolvedValue({ id: 'evt-1' }),
+  on: jest.fn(),
+};
+
 describe('NotificationController', () => {
   let controller: NotificationController;
 
@@ -27,6 +38,8 @@ describe('NotificationController', () => {
       providers: [
         { provide: PrismaService, useValue: prisma },
         { provide: EncryptionService, useValue: encryption },
+        { provide: NotificationService, useValue: notificationService },
+        { provide: DomainEventBus, useValue: eventBus },
       ],
     }).compile();
 

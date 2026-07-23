@@ -13,7 +13,10 @@ export class PurchasePolicyDto {
   @IsString()
   poolId: string;
 
-  @ApiProperty({ description: 'Risk type for the insurance policy', enum: RiskType })
+  @ApiProperty({
+    description: 'Risk type for the insurance policy',
+    enum: RiskType,
+  })
   @IsEnum(RiskType)
   riskType: RiskType;
 

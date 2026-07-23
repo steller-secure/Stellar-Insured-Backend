@@ -35,13 +35,18 @@ export interface ScoreBreakdown extends FactorScores {
  * Ratio of decay-weighted successful transactions to all transaction outcomes.
  * A perfect 100% success rate yields 100; 0% yields 0.
  */
-export function calcSuccessRateScore(activities: ReputationActivity[], now: Date): number {
+export function calcSuccessRateScore(
+  activities: ReputationActivity[],
+  now: Date,
+): number {
   const transactionTypes = new Set([
     ActivityType.SUCCESSFUL_TRANSACTION,
     ActivityType.FAILED_TRANSACTION,
   ]);
 
-  const transactions = activities.filter((a) => transactionTypes.has(a.activityType));
+  const transactions = activities.filter(a =>
+    transactionTypes.has(a.activityType),
+  );
   if (transactions.length === 0) return 50; // neutral default — no data
 
   let weightedSuccess = 0;
@@ -55,7 +60,9 @@ export function calcSuccessRateScore(activities: ReputationActivity[], now: Date
     }
   }
 
-  return weightedTotal === 0 ? 50 : clamp((weightedSuccess / weightedTotal) * 100);
+  return weightedTotal === 0
+    ? 50
+    : clamp((weightedSuccess / weightedTotal) * 100);
 }
 
 /**
@@ -64,8 +71,13 @@ export function calcSuccessRateScore(activities: ReputationActivity[], now: Date
  * Decay-weighted mean of PEER_RATING values, normalised from a 1–5 scale
  * to 0–100. Falls back to 50 when no ratings exist.
  */
-export function calcPeerRatingScore(activities: ReputationActivity[], now: Date): number {
-  const ratings = activities.filter((a) => a.activityType === ActivityType.PEER_RATING);
+export function calcPeerRatingScore(
+  activities: ReputationActivity[],
+  now: Date,
+): number {
+  const ratings = activities.filter(
+    a => a.activityType === ActivityType.PEER_RATING,
+  );
   if (ratings.length === 0) return 50;
 
   let weightedSum = 0;
@@ -93,13 +105,18 @@ export function calcPeerRatingScore(activities: ReputationActivity[], now: Date)
  * Score = log10(1 + totalWeightedValue) / log10(1 + SCALE_CAP) × 100
  * where SCALE_CAP represents the value at which a user earns 100 points.
  */
-export function calcContributionSizeScore(activities: ReputationActivity[], now: Date): number {
+export function calcContributionSizeScore(
+  activities: ReputationActivity[],
+  now: Date,
+): number {
   const contributionTypes = new Set([
     ActivityType.SUCCESSFUL_TRANSACTION,
     ActivityType.HIGH_VALUE_CONTRIBUTION,
   ]);
 
-  const relevant = activities.filter((a) => contributionTypes.has(a.activityType));
+  const relevant = activities.filter(a =>
+    contributionTypes.has(a.activityType),
+  );
   if (relevant.length === 0) return 0;
 
   let weightedValue = 0;
@@ -109,7 +126,9 @@ export function calcContributionSizeScore(activities: ReputationActivity[], now:
 
   // SCALE_CAP: a user with this much weighted contribution value earns 100.
   const SCALE_CAP = 10_000;
-  return clamp((Math.log10(1 + weightedValue) / Math.log10(1 + SCALE_CAP)) * 100);
+  return clamp(
+    (Math.log10(1 + weightedValue) / Math.log10(1 + SCALE_CAP)) * 100,
+  );
 }
 
 /**
@@ -118,11 +137,17 @@ export function calcContributionSizeScore(activities: ReputationActivity[], now:
  * Combines COMMUNITY_REVIEW ratings (normalised 1–5) and dispute outcomes
  * (DISPUTE_WON adds positive weight, DISPUTE_LOST subtracts).
  */
-export function calcCommunityFeedbackScore(activities: ReputationActivity[], now: Date): number {
-  const reviews = activities.filter((a) => a.activityType === ActivityType.COMMUNITY_REVIEW);
+export function calcCommunityFeedbackScore(
+  activities: ReputationActivity[],
+  now: Date,
+): number {
+  const reviews = activities.filter(
+    a => a.activityType === ActivityType.COMMUNITY_REVIEW,
+  );
   const disputes = activities.filter(
-    (a) =>
-      a.activityType === ActivityType.DISPUTE_WON || a.activityType === ActivityType.DISPUTE_LOST,
+    a =>
+      a.activityType === ActivityType.DISPUTE_WON ||
+      a.activityType === ActivityType.DISPUTE_LOST,
   );
 
   if (reviews.length === 0 && disputes.length === 0) return 50;
@@ -160,7 +185,9 @@ export function calcCommunityFeedbackScore(activities: ReputationActivity[], now
   const totalWeight = reviewWeight + disputeWeight;
 
   if (totalWeight === 0) return 50;
-  return clamp((reviewScore * reviewWeight + disputeScore * disputeWeight) / totalWeight);
+  return clamp(
+    (reviewScore * reviewWeight + disputeScore * disputeWeight) / totalWeight,
+  );
 }
 
 // ---------------------------------------------------------------------------

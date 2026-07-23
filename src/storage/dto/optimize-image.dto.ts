@@ -6,14 +6,22 @@ export class OptimizeImageDto {
   @IsString()
   imagePath!: string;
 
-  @ApiProperty({ description: 'Target width in pixels', minimum: 1, maximum: 8192 })
+  @ApiProperty({
+    description: 'Target width in pixels',
+    minimum: 1,
+    maximum: 8192,
+  })
   @IsInt()
   @IsPositive()
   @Min(1)
   @Max(8192)
   width!: number;
 
-  @ApiProperty({ description: 'Target height in pixels', minimum: 1, maximum: 8192 })
+  @ApiProperty({
+    description: 'Target height in pixels',
+    minimum: 1,
+    maximum: 8192,
+  })
   @IsInt()
   @IsPositive()
   @Min(1)

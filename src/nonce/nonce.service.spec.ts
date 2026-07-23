@@ -45,17 +45,23 @@ describe('NonceService', () => {
 
   describe('consumeNonce', () => {
     it('should throw BadRequestException for empty nonce', async () => {
-      await expect(service.consumeNonce('')).rejects.toThrow(BadRequestException);
+      await expect(service.consumeNonce('')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException for non-string nonce', async () => {
-      await expect(service.consumeNonce(null as any)).rejects.toThrow(BadRequestException);
+      await expect(service.consumeNonce(null as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException if nonce is unknown or expired', async () => {
       cache.get.mockResolvedValue(null);
 
-      await expect(service.consumeNonce('nonexistent')).rejects.toThrow(BadRequestException);
+      await expect(service.consumeNonce('nonexistent')).rejects.toThrow(
+        BadRequestException,
+      );
       await expect(service.consumeNonce('nonexistent')).rejects.toThrow(
         'Nonce is invalid, expired, or has already been used.',
       );
@@ -82,7 +88,9 @@ describe('NonceService', () => {
       // Second call: nonce no longer exists (already consumed)
       cache.get.mockResolvedValue(null);
 
-      await expect(service.consumeNonce('valid-nonce')).rejects.toThrow(BadRequestException);
+      await expect(service.consumeNonce('valid-nonce')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 

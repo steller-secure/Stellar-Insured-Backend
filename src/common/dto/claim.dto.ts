@@ -45,7 +45,9 @@ export class CreateClaimDto {
   @ApiProperty()
   policyId: string;
 
-  @ApiProperty({ description: 'Claim amount as string (will be converted to Decimal)' })
+  @ApiProperty({
+    description: 'Claim amount as string (will be converted to Decimal)',
+  })
   claimAmount: string;
 
   @ApiPropertyOptional()
@@ -59,7 +61,9 @@ export class UpdateClaimDto {
   @ApiPropertyOptional({ enum: ClaimStatus })
   status?: ClaimStatus;
 
-  @ApiPropertyOptional({ description: 'Payout amount as string (will be converted to Decimal)' })
+  @ApiPropertyOptional({
+    description: 'Payout amount as string (will be converted to Decimal)',
+  })
   payoutAmount?: string;
 
   @ApiPropertyOptional()

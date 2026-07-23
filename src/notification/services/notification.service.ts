@@ -9,7 +9,11 @@ import { WebPushService } from './web-push.service';
 import { NotificationType } from '../enums/notification-type.enum';
 import { validateEnum } from '../../common/validators/enum.validator';
 import { UserService } from '../../user/user.service';
-import { QUEUE_NAMES, EmailJobData, PushJobData } from '../constants/queue.constants';
+import {
+  QUEUE_NAMES,
+  EmailJobData,
+  PushJobData,
+} from '../constants/queue.constants';
 
 @Injectable()
 export class NotificationService {
@@ -68,7 +72,12 @@ export class NotificationService {
     });
 
     if (settings.emailEnabled && contactData.email) {
-      await this.enqueueEmail(contactData.email, title, `<p>${message}</p>`, tx);
+      await this.enqueueEmail(
+        contactData.email,
+        title,
+        `<p>${message}</p>`,
+        tx,
+      );
     }
 
     const pushSubscription = this.getPushSubscription(
@@ -76,7 +85,10 @@ export class NotificationService {
     );
     if (settings.pushEnabled && pushSubscription) {
       await this.pushQueue.add(
-        { subscription: pushSubscription, payload: { title, body: message, data } },
+        {
+          subscription: pushSubscription,
+          payload: { title, body: message, data },
+        },
         { attempts: 5, backoff: { type: 'exponential', delay: 5000 } },
       );
     }

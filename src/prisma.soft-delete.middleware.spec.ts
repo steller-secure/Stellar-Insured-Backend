@@ -6,9 +6,7 @@ import {
 
 type MiddlewareParams = Prisma.MiddlewareParams;
 
-function buildParams(
-  overrides: Partial<MiddlewareParams>,
-): MiddlewareParams {
+function buildParams(overrides: Partial<MiddlewareParams>): MiddlewareParams {
   return {
     model: 'User',
     action: 'findMany',

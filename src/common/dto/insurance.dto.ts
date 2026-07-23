@@ -73,10 +73,14 @@ export class CreateInsurancePolicyDto {
   @ApiProperty({ enum: RiskType })
   riskType: RiskType;
 
-  @ApiProperty({ description: 'Premium as string (will be converted to Decimal)' })
+  @ApiProperty({
+    description: 'Premium as string (will be converted to Decimal)',
+  })
   premium: string;
 
-  @ApiProperty({ description: 'Coverage amount as string (will be converted to Decimal)' })
+  @ApiProperty({
+    description: 'Coverage amount as string (will be converted to Decimal)',
+  })
   coverageAmount: string;
 
   @ApiPropertyOptional()
@@ -93,10 +97,14 @@ export class UpdateInsurancePolicyDto {
   @ApiPropertyOptional({ enum: PolicyStatus })
   status?: PolicyStatus;
 
-  @ApiPropertyOptional({ description: 'Premium as string (will be converted to Decimal)' })
+  @ApiPropertyOptional({
+    description: 'Premium as string (will be converted to Decimal)',
+  })
   premium?: string;
 
-  @ApiPropertyOptional({ description: 'Coverage amount as string (will be converted to Decimal)' })
+  @ApiPropertyOptional({
+    description: 'Coverage amount as string (will be converted to Decimal)',
+  })
   coverageAmount?: string;
 
   @ApiPropertyOptional()

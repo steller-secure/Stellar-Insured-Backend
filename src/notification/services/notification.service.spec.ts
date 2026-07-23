@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { EmailService } from './email.service';
 import { WebPushService } from './web-push.service';
+import { UserService } from '../../user/user.service';
 import { PrismaService } from '../../prisma.service';
 import { NotificationType } from '../enums/notification-type.enum';
 
@@ -15,6 +16,9 @@ interface MockPrismaService {
   emailOutbox: {
     create: jest.Mock;
   };
+  notificationSetting: {
+    create: jest.Mock;
+  };
 }
 
 interface MockEmailService {
@@ -23,6 +27,10 @@ interface MockEmailService {
 
 interface MockWebPushService {
   sendNotification: jest.Mock;
+}
+
+interface MockUserService {
+  getDecryptedContact: jest.Mock;
 }
 
 interface MockQueue {
@@ -34,6 +42,7 @@ describe('NotificationService', () => {
   let prisma: MockPrismaService;
   let emailService: MockEmailService;
   let webPushService: MockWebPushService;
+  let userService: MockUserService;
   let emailQueue: MockQueue;
   let pushQueue: MockQueue;
 
@@ -48,12 +57,18 @@ describe('NotificationService', () => {
       emailOutbox: {
         create: jest.fn(),
       },
+      notificationSetting: {
+        create: jest.fn(),
+      },
     };
     emailService = {
       sendEmail: jest.fn(),
     };
     webPushService = {
       sendNotification: jest.fn(),
+    };
+    userService = {
+      getDecryptedContact: jest.fn(),
     };
     emailQueue = { add: jest.fn() };
     pushQueue = { add: jest.fn() };
@@ -62,8 +77,9 @@ describe('NotificationService', () => {
       prisma as unknown as PrismaService,
       emailService as unknown as EmailService,
       webPushService as unknown as WebPushService,
-      emailQueue as unknown as MockQueue,
-      pushQueue as unknown as MockQueue,
+      userService as unknown as UserService,
+      emailQueue as unknown as any,
+      pushQueue as unknown as any,
     );
   });
 
@@ -77,8 +93,7 @@ describe('NotificationService', () => {
       },
     };
 
-    prisma.user.findFirst.mockResolvedValue({
-      id: 'user-1',
+    userService.getDecryptedContact.mockResolvedValue({
       email: 'person@example.com',
       pushSubscription,
       notificationSettings: {
@@ -113,10 +128,8 @@ describe('NotificationService', () => {
         data,
       },
     });
-    // No inline provider call.
     expect(emailService.sendEmail).not.toHaveBeenCalled();
     expect(webPushService.sendNotification).not.toHaveBeenCalled();
-    // Durable outbox row written, then enqueued.
     expect(prisma.emailOutbox.create).toHaveBeenCalledWith({
       data: {
         to: 'person@example.com',
@@ -127,11 +140,14 @@ describe('NotificationService', () => {
     });
     expect(emailQueue.add).toHaveBeenCalledTimes(1);
     expect(pushQueue.add).toHaveBeenCalledWith(
-      { subscription: pushSubscription, payload: {
-        title: 'Contribution received',
-        body: 'A contribution was received.',
-        data,
-      } },
+      {
+        subscription: pushSubscription,
+        payload: {
+          title: 'Contribution received',
+          body: 'A contribution was received.',
+          data,
+        },
+      },
       expect.objectContaining({ attempts: 5 }),
     );
   });

@@ -38,7 +38,9 @@ export class XdrDecoderService {
     try {
       scVal = xdr.ScVal.fromXDR(valueXdr, 'base64');
     } catch (error) {
-      this.logger.warn(`Quarantined event (bad XDR, ${eventType}): ${error.message}`);
+      this.logger.warn(
+        `Quarantined event (bad XDR, ${eventType}): ${error.message}`,
+      );
       return this.quarantine(valueXdr, `invalid_xdr: ${error.message}`);
     }
 
@@ -47,14 +49,18 @@ export class XdrDecoderService {
     try {
       native = scValToNative(scVal);
     } catch (error) {
-      this.logger.warn(`Quarantined event (undecodable ScVal, ${eventType}): ${error.message}`);
+      this.logger.warn(
+        `Quarantined event (undecodable ScVal, ${eventType}): ${error.message}`,
+      );
       return this.quarantine(valueXdr, `undecodable_scval: ${error.message}`);
     }
 
     // 3. Route to the per-type decoder to coerce/normalize known fields.
     const decoder = this.decoders.get(eventType);
     if (!decoder) {
-      this.logger.debug(`No structured decoder for ${eventType}; storing native payload`);
+      this.logger.debug(
+        `No structured decoder for ${eventType}; storing native payload`,
+      );
       return {
         data: this.normalizeNative(native),
         rawXdr: valueXdr,
@@ -65,7 +71,9 @@ export class XdrDecoderService {
       const data = decoder.call(this, native as Record<string, unknown>);
       return { data, rawXdr: valueXdr };
     } catch (error) {
-      this.logger.warn(`Quarantined event (shape mismatch, ${eventType}): ${error.message}`);
+      this.logger.warn(
+        `Quarantined event (shape mismatch, ${eventType}): ${error.message}`,
+      );
       return this.quarantine(valueXdr, `shape_mismatch: ${error.message}`);
     }
   }
@@ -92,7 +100,7 @@ export class XdrDecoderService {
    */
   private normalizeNative(value: unknown): Record<string, unknown> {
     if (Array.isArray(value)) {
-      return { items: value.map((v) => this.coerceScalar(v)) };
+      return { items: value.map(v => this.coerceScalar(v)) };
     }
     if (value && typeof value === 'object') {
       const out: Record<string, unknown> = {};
@@ -111,12 +119,16 @@ export class XdrDecoderService {
   private coerceScalar(value: unknown): unknown {
     if (value === null || value === undefined) return value;
     if (typeof value === 'bigint') return value.toString();
-    if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') {
+    if (
+      typeof value === 'number' ||
+      typeof value === 'string' ||
+      typeof value === 'boolean'
+    ) {
       return value;
     }
     if (value instanceof Address) return value.toString();
     if (Buffer.isBuffer(value)) return value.toString('base64');
-    if (Array.isArray(value)) return value.map((v) => this.coerceScalar(v));
+    if (Array.isArray(value)) return value.map(v => this.coerceScalar(v));
     if (typeof value === 'object') {
       const out: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
@@ -136,7 +148,10 @@ export class XdrDecoderService {
   // contract event schema, object members are matched by key.
   // ---------------------------------------------------------------------------
 
-  private readonly decoders = new Map<ContractEventType, (n: Record<string, unknown>) => Record<string, unknown>>([
+  private readonly decoders = new Map<
+    ContractEventType,
+    (n: Record<string, unknown>) => Record<string, unknown>
+  >([
     [ContractEventType.PROJECT_CREATED, this.decodeProjectCreated],
     [ContractEventType.PROJECT_FUNDED, this.decodeProjectFunded],
     [ContractEventType.PROJECT_COMPLETED, this.decodeProjectStatus],
@@ -201,14 +216,17 @@ export class XdrDecoderService {
     // When the payload is an array (Vec), positional matching is impossible
     // without a contract-specific schema; fall back to a best-effort lookup
     // by lowercased/normalized key.
-    const alt = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
+    const alt = Object.keys(obj).find(
+      k => k.toLowerCase() === key.toLowerCase(),
+    );
     return alt ? obj[alt] : undefined;
   }
 
   private str(value: unknown): string {
     if (value === null || value === undefined) return '';
     if (typeof value === 'string') return value;
-    if (typeof value === 'bigint' || typeof value === 'number') return value.toString();
+    if (typeof value === 'bigint' || typeof value === 'number')
+      return value.toString();
     if (value instanceof Address) return value.toString();
     if (Buffer.isBuffer(value)) return value.toString('base64');
     return String(value);
@@ -232,18 +250,24 @@ export class XdrDecoderService {
 
   // --- Decoder implementations ----------------------------------------------
 
-  private decodeProjectCreated(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeProjectCreated(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
       creator: this.str(this.field(o, 'creator') ?? this.field(o, 'owner')),
-      fundingGoal: this.bigStr(this.field(o, 'funding_goal') ?? this.field(o, 'goal')),
+      fundingGoal: this.bigStr(
+        this.field(o, 'funding_goal') ?? this.field(o, 'goal'),
+      ),
       deadline: this.num(this.field(o, 'deadline')),
       token: this.str(this.field(o, 'token')),
     };
   }
 
-  private decodeProjectFunded(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeProjectFunded(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -252,7 +276,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeProjectStatus(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeProjectStatus(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     const status = this.str(this.field(o, 'status'));
     return {
@@ -261,17 +287,23 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeContributionMade(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeContributionMade(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
-      contributor: this.str(this.field(o, 'contributor') ?? this.field(o, 'investor')),
+      contributor: this.str(
+        this.field(o, 'contributor') ?? this.field(o, 'investor'),
+      ),
       amount: this.bigStr(this.field(o, 'amount')),
       totalRaised: this.bigStr(this.field(o, 'total_raised')),
     };
   }
 
-  private decodeRefundIssued(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeRefundIssued(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -280,7 +312,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeEscrowInitialized(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeEscrowInitialized(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -289,7 +323,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeFundsLocked(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeFundsLocked(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -298,7 +334,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeFundsReleased(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeFundsReleased(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -307,7 +345,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeMilestoneCreated(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeMilestoneCreated(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -316,7 +356,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeMilestoneSubmitted(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeMilestoneSubmitted(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -325,7 +367,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeMilestoneApproved(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeMilestoneApproved(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -334,7 +378,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeMilestoneRejected(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeMilestoneRejected(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -343,7 +389,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeMilestoneCompleted(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeMilestoneCompleted(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
@@ -351,16 +399,22 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeValidatorsUpdated(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeValidatorsUpdated(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     const validators = this.field(o, 'validators');
     return {
       projectId: this.num(this.field(o, 'project_id') ?? this.field(o, 'id')),
-      validatorCount: Array.isArray(validators) ? validators.length : this.num(validators),
+      validatorCount: Array.isArray(validators)
+        ? validators.length
+        : this.num(validators),
     };
   }
 
-  private decodeProfitDistributed(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeProfitDistributed(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       poolId: this.str(this.field(o, 'pool_id')),
@@ -369,7 +423,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeDividendClaimed(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeDividendClaimed(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       poolId: this.str(this.field(o, 'pool_id')),
@@ -378,7 +434,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeProposalCreated(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeProposalCreated(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       proposalId: this.num(this.field(o, 'proposal_id')),
@@ -396,22 +454,30 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeProposalExecuted(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeProposalExecuted(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       proposalId: this.num(this.field(o, 'proposal_id')),
-      success: this.str(this.field(o, 'success')) === 'true' || this.field(o, 'success') === true,
+      success:
+        this.str(this.field(o, 'success')) === 'true' ||
+        this.field(o, 'success') === true,
     };
   }
 
-  private decodeUserRegistered(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeUserRegistered(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       user: this.str(this.field(o, 'user') ?? this.field(o, 'address')),
     };
   }
 
-  private decodeReputationUpdated(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeReputationUpdated(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       user: this.str(this.field(o, 'user') ?? this.field(o, 'address')),
@@ -420,7 +486,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeBadgeEarned(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeBadgeEarned(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       user: this.str(this.field(o, 'user') ?? this.field(o, 'address')),
@@ -428,7 +496,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodePaymentSetup(n: Record<string, unknown>): Record<string, unknown> {
+  private decodePaymentSetup(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       paymentId: this.str(this.field(o, 'payment_id')),
@@ -437,7 +507,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodePaymentReceived(n: Record<string, unknown>): Record<string, unknown> {
+  private decodePaymentReceived(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       paymentId: this.str(this.field(o, 'payment_id')),
@@ -445,7 +517,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodePaymentWithdrawn(n: Record<string, unknown>): Record<string, unknown> {
+  private decodePaymentWithdrawn(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       paymentId: this.str(this.field(o, 'payment_id')),
@@ -454,7 +528,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeSubscriptionCreated(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeSubscriptionCreated(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       subscriptionId: this.str(this.field(o, 'subscription_id')),
@@ -464,7 +540,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeSubscriptionStatus(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeSubscriptionStatus(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       subscriptionId: this.str(this.field(o, 'subscription_id')),
@@ -472,7 +550,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeSubscriptionModified(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeSubscriptionModified(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       subscriptionId: this.str(this.field(o, 'subscription_id')),
@@ -481,7 +561,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodePaymentFailed(n: Record<string, unknown>): Record<string, unknown> {
+  private decodePaymentFailed(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       subscriptionId: this.str(this.field(o, 'subscription_id')),
@@ -489,7 +571,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeSubscriptionPayment(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeSubscriptionPayment(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       subscriptionId: this.str(this.field(o, 'subscription_id')),
@@ -497,7 +581,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeBridgeInitialized(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeBridgeInitialized(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       bridgeId: this.str(this.field(o, 'bridge_id')),
@@ -505,7 +591,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeChainAdded(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeChainAdded(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       chainId: this.num(this.field(o, 'chain_id')),
@@ -513,14 +601,18 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeChainRemoved(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeChainRemoved(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       chainId: this.num(this.field(o, 'chain_id')),
     };
   }
 
-  private decodeAssetWrapped(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeAssetWrapped(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       asset: this.str(this.field(o, 'asset')),
@@ -529,7 +621,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeAssetUnwrapped(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeAssetUnwrapped(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       asset: this.str(this.field(o, 'asset')),
@@ -537,7 +631,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeBridgeDeposit(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeBridgeDeposit(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       chainId: this.num(this.field(o, 'chain_id')),
@@ -546,7 +642,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeBridgeWithdraw(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeBridgeWithdraw(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       chainId: this.num(this.field(o, 'chain_id')),
@@ -555,7 +653,9 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeBridgeLifecycle(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeBridgeLifecycle(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
       bridgeId: this.str(this.field(o, 'bridge_id')),
@@ -577,18 +677,26 @@ export class XdrDecoderService {
     };
   }
 
-  private decodeContractLifecycle(n: Record<string, unknown>): Record<string, unknown> {
+  private decodeContractLifecycle(
+    n: Record<string, unknown>,
+  ): Record<string, unknown> {
     const o = this.asObject(n);
     return {
-      contractId: this.str(this.field(o, 'contract_id') ?? this.field(o, 'contract')),
+      contractId: this.str(
+        this.field(o, 'contract_id') ?? this.field(o, 'contract'),
+      ),
     };
   }
 
   private decodeUpgrade(n: Record<string, unknown>): Record<string, unknown> {
     const o = this.asObject(n);
     return {
-      contractId: this.str(this.field(o, 'contract_id') ?? this.field(o, 'contract')),
-      newWasmHash: this.str(this.field(o, 'new_wasm_hash') ?? this.field(o, 'wasm_hash')),
+      contractId: this.str(
+        this.field(o, 'contract_id') ?? this.field(o, 'contract'),
+      ),
+      newWasmHash: this.str(
+        this.field(o, 'new_wasm_hash') ?? this.field(o, 'wasm_hash'),
+      ),
     };
   }
 }

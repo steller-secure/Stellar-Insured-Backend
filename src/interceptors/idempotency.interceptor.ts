@@ -7,49 +7,55 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { tap, finalize } from 'rxjs/operators';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { DomainEventBus } from '../common/events/domain-event-bus.service';
 
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventBus: DomainEventBus,
+  ) {}
 
-  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+  async intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Promise<Observable<any>> {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
-    const idempotencyKey = request.headers['idempotency-key'] || request.headers['Idempotency-Key'];
+    const idempotencyKey =
+      request.headers['idempotency-key'] || request.headers['Idempotency-Key'];
 
-    // If no idempotency key, proceed normally
     if (!idempotencyKey) {
       return next.handle();
     }
+
+    this.eventBus.setIdempotencyKey(idempotencyKey as string);
 
     const method = request.method;
     const endpoint = request.url;
 
     try {
-      // Check if key already exists and is still valid
       const existingKey = await this.prisma.idempotencyKey.findUnique({
         where: { key: idempotencyKey },
       });
 
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24); // 24-hour TTL
+      expiresAt.setHours(expiresAt.getHours() + 24);
 
       if (existingKey) {
         const isExpired = new Date() > existingKey.expiresAt;
 
         if (!isExpired) {
           if (existingKey.status === 'COMPLETED' && existingKey.response) {
-            // Return cached response
             response.set('X-Idempotency-Key', idempotencyKey);
             response.set('X-Idempotency-Replayed', 'true');
             return of(existingKey.response);
           }
 
           if (existingKey.status === 'PENDING') {
-            // Request is being processed, return 409 Conflict
             throw new HttpException(
               'Request is still being processed. Please wait and retry.',
               HttpStatus.CONFLICT,
@@ -57,10 +63,6 @@ export class IdempotencyInterceptor implements NestInterceptor {
           }
         }
 
-        // Key expired or previous attempt failed: reset the record in place.
-        // IdempotencyKey is a soft-delete model, so delete + recreate would
-        // leave a soft-deleted row holding the unique key and the recreate
-        // would fail with a unique constraint violation.
         await this.prisma.idempotencyKey.update({
           where: { key: idempotencyKey },
           data: {
@@ -74,7 +76,6 @@ export class IdempotencyInterceptor implements NestInterceptor {
           },
         });
       } else {
-        // Create new idempotency key record
         await this.prisma.idempotencyKey.create({
           data: {
             key: idempotencyKey,
@@ -87,10 +88,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
         });
       }
 
-      // Process the request
       return next.handle().pipe(
-        tap(async (result) => {
-          // Store successful response
+        tap(async result => {
           await this.prisma.idempotencyKey.update({
             where: { key: idempotencyKey },
             data: {
@@ -100,14 +99,17 @@ export class IdempotencyInterceptor implements NestInterceptor {
           });
           response.set('X-Idempotency-Key', idempotencyKey);
         }),
+        finalize(() => {
+          this.eventBus.setIdempotencyKey(null);
+        }),
       );
     } catch (error) {
-      // If it's an HttpException, re-throw it
+      this.eventBus.setIdempotencyKey(null);
+
       if (error instanceof HttpException) {
         throw error;
       }
 
-      // For other errors, update idempotency key status if it exists
       if (idempotencyKey) {
         try {
           await this.prisma.idempotencyKey.update({
@@ -117,9 +119,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
               response: { error: error.message || 'Internal server error' },
             },
           });
-        } catch (dbError) {
-          // Ignore database errors during error handling
-        }
+        } catch {}
       }
       throw error;
     }

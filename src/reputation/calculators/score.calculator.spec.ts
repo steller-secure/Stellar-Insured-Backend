@@ -1,4 +1,3 @@
-import { describe, it } from 'node:test';
 import {
   calcSuccessRateScore,
   calcPeerRatingScore,
@@ -7,17 +6,17 @@ import {
   calculateReputationScore,
 } from './score.calculator';
 import { ReputationActivity } from '../interfaces/reputation-activity.interface';
-import { ActivityType, MIN_ACTIVITY_THRESHOLD } from '../Reputation.constants';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+import { ActivityType, MIN_ACTIVITY_THRESHOLD } from '../reputation.constants';
 
 const NOW = new Date('2024-06-15T00:00:00.000Z');
 
 const daysAgo = (d: number) => new Date(NOW.getTime() - d * 86_400_000);
 
-const makeActivity = (type: ActivityType, value: number, daysOld = 0): ReputationActivity =>
+const makeActivity = (
+  type: ActivityType,
+  value: number,
+  daysOld = 0,
+): ReputationActivity =>
   ({
     id: Math.random().toString(),
     subjectId: 'subject-1',
@@ -29,20 +28,20 @@ const makeActivity = (type: ActivityType, value: number, daysOld = 0): Reputatio
     createdAt: daysAgo(daysOld),
   }) as ReputationActivity;
 
-const success = (daysOld = 0) => makeActivity(ActivityType.SUCCESSFUL_TRANSACTION, 100, daysOld);
-const failure = (daysOld = 0) => makeActivity(ActivityType.FAILED_TRANSACTION, 100, daysOld);
+const success = (daysOld = 0) =>
+  makeActivity(ActivityType.SUCCESSFUL_TRANSACTION, 100, daysOld);
+const failure = (daysOld = 0) =>
+  makeActivity(ActivityType.FAILED_TRANSACTION, 100, daysOld);
 const rating = (value: number, daysOld = 0) =>
   makeActivity(ActivityType.PEER_RATING, value, daysOld);
 const review = (value: number, daysOld = 0) =>
   makeActivity(ActivityType.COMMUNITY_REVIEW, value, daysOld);
-const dispWon = (daysOld = 0) => makeActivity(ActivityType.DISPUTE_WON, 1, daysOld);
-const dispLost = (daysOld = 0) => makeActivity(ActivityType.DISPUTE_LOST, 1, daysOld);
+const dispWon = (daysOld = 0) =>
+  makeActivity(ActivityType.DISPUTE_WON, 1, daysOld);
+const dispLost = (daysOld = 0) =>
+  makeActivity(ActivityType.DISPUTE_LOST, 1, daysOld);
 const highValue = (value: number, daysOld = 0) =>
   makeActivity(ActivityType.HIGH_VALUE_CONTRIBUTION, value, daysOld);
-
-// ---------------------------------------------------------------------------
-// calcSuccessRateScore
-// ---------------------------------------------------------------------------
 
 describe('calcSuccessRateScore', () => {
   it('returns 100 for all successful transactions', () => {
@@ -65,8 +64,8 @@ describe('calcSuccessRateScore', () => {
   });
 
   it('applies decay — older failures hurt less than recent ones', () => {
-    const recentMix = [success(0), failure(0)]; // 50%
-    const oldFailure = [success(0), failure(360)]; // older failure decays → > 50%
+    const recentMix = [success(0), failure(0)];
+    const oldFailure = [success(0), failure(360)];
     const scoreRecent = calcSuccessRateScore(recentMix, NOW);
     const scoreOld = calcSuccessRateScore(oldFailure, NOW);
     expect(scoreOld).toBeGreaterThan(scoreRecent);
@@ -79,13 +78,12 @@ describe('calcSuccessRateScore', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// calcPeerRatingScore
-// ---------------------------------------------------------------------------
-
 describe('calcPeerRatingScore', () => {
   it('returns 100 for all 5-star ratings', () => {
-    expect(calcPeerRatingScore([rating(5), rating(5)], NOW)).toBeCloseTo(100, 1);
+    expect(calcPeerRatingScore([rating(5), rating(5)], NOW)).toBeCloseTo(
+      100,
+      1,
+    );
   });
 
   it('returns 0 for all 1-star ratings', () => {
@@ -102,17 +100,13 @@ describe('calcPeerRatingScore', () => {
   });
 
   it('weights recent ratings more than old ones', () => {
-    const recentHigh = [rating(5, 0), rating(2, 360)]; // recent 5-star
-    const recentLow = [rating(2, 0), rating(5, 360)]; // recent 2-star
+    const recentHigh = [rating(5, 0), rating(2, 360)];
+    const recentLow = [rating(2, 0), rating(5, 360)];
     const scoreHigh = calcPeerRatingScore(recentHigh, NOW);
     const scoreLow = calcPeerRatingScore(recentLow, NOW);
     expect(scoreHigh).toBeGreaterThan(scoreLow);
   });
 });
-
-// ---------------------------------------------------------------------------
-// calcContributionSizeScore
-// ---------------------------------------------------------------------------
 
 describe('calcContributionSizeScore', () => {
   it('returns 0 when no contribution activities exist', () => {
@@ -121,7 +115,9 @@ describe('calcContributionSizeScore', () => {
 
   it('increases monotonically with higher transaction values', () => {
     const low = calcContributionSizeScore(
-      [success(0)].map(() => makeActivity(ActivityType.SUCCESSFUL_TRANSACTION, 100, 0)),
+      [success(0)].map(() =>
+        makeActivity(ActivityType.SUCCESSFUL_TRANSACTION, 100, 0),
+      ),
       NOW,
     );
     const high = calcContributionSizeScore(
@@ -138,7 +134,11 @@ describe('calcContributionSizeScore', () => {
   });
 
   it('is bounded [0, 100]', () => {
-    const huge = makeActivity(ActivityType.SUCCESSFUL_TRANSACTION, 1_000_000_000, 0);
+    const huge = makeActivity(
+      ActivityType.SUCCESSFUL_TRANSACTION,
+      1_000_000_000,
+      0,
+    );
     const score = calcContributionSizeScore([huge], NOW);
     expect(score).toBeGreaterThanOrEqual(0);
     expect(score).toBeLessThanOrEqual(100);
@@ -156,10 +156,6 @@ describe('calcContributionSizeScore', () => {
     expect(recent).toBeGreaterThan(old);
   });
 });
-
-// ---------------------------------------------------------------------------
-// calcCommunityFeedbackScore
-// ---------------------------------------------------------------------------
 
 describe('calcCommunityFeedbackScore', () => {
   it('returns neutral 50 when no reviews or disputes exist', () => {
@@ -180,8 +176,9 @@ describe('calcCommunityFeedbackScore', () => {
     const onlyReview = calcCommunityFeedbackScore([review(5)], NOW);
     const onlyDispute = calcCommunityFeedbackScore([dispWon()], NOW);
     const combined = calcCommunityFeedbackScore([review(5), dispWon()], NOW);
-    // Combined should be between or equal to both extremes (both are high here)
-    expect(combined).toBeGreaterThanOrEqual(Math.min(onlyReview, onlyDispute) - 1);
+    expect(combined).toBeGreaterThanOrEqual(
+      Math.min(onlyReview, onlyDispute) - 1,
+    );
   });
 
   it('handles only disputes (no reviews)', () => {
@@ -190,10 +187,6 @@ describe('calcCommunityFeedbackScore', () => {
     expect(wonAll).toBeGreaterThan(lostAll);
   });
 });
-
-// ---------------------------------------------------------------------------
-// calculateReputationScore (composite)
-// ---------------------------------------------------------------------------
 
 describe('calculateReputationScore', () => {
   it('returns lowConfidence=true when below MIN_ACTIVITY_THRESHOLD', () => {
@@ -218,7 +211,14 @@ describe('calculateReputationScore', () => {
   });
 
   it('composite score is a weighted blend of factor scores', () => {
-    const acts = [success(), success(), rating(5), highValue(1000), review(5), dispWon()];
+    const acts = [
+      success(),
+      success(),
+      rating(5),
+      highValue(1000),
+      review(5),
+      dispWon(),
+    ];
     const result = calculateReputationScore(acts, NOW);
     expect(result.compositeScore).toBeGreaterThan(0);
     expect(result.compositeScore).toBeLessThanOrEqual(100);
@@ -250,10 +250,16 @@ describe('calculateReputationScore', () => {
       dispLost(),
     ];
 
-    const goodScore = calculateReputationScore(goodActivities, NOW).compositeScore;
-    const badScore = calculateReputationScore(badActivities, NOW).compositeScore;
+    const goodScore = calculateReputationScore(
+      goodActivities,
+      NOW,
+    ).compositeScore;
+    const badScore = calculateReputationScore(
+      badActivities,
+      NOW,
+    ).compositeScore;
 
-    expect(goodScore).toBeGreaterThan(badScore + 30); // at least 30 points apart
+    expect(goodScore).toBeGreaterThan(badScore + 30);
   });
 
   it('all returned factor scores are in [0, 100]', () => {
@@ -282,7 +288,6 @@ describe('calculateReputationScore', () => {
     const r = calculateReputationScore([], NOW);
     expect(r.activityCount).toBe(0);
     expect(r.lowConfidence).toBe(true);
-    // Neutral defaults from each calculator
     expect(r.compositeScore).toBeGreaterThanOrEqual(0);
     expect(r.compositeScore).toBeLessThanOrEqual(100);
   });

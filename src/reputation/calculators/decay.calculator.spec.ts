@@ -1,4 +1,3 @@
-import { describe, it } from 'node:test';
 import { timeDecayWeight } from './decay.calculator';
 
 const NOW = new Date('2024-06-15T00:00:00.000Z');
@@ -28,12 +27,13 @@ describe('timeDecayWeight', () => {
   });
 
   it('supports custom half-life override', () => {
-    // half-life of 30 days → 0.5 at 30 days
     expect(timeDecayWeight(daysAgo(30), NOW, 30)).toBeCloseTo(0.5, 5);
   });
 
   it('produces a strictly decreasing sequence as age increases', () => {
-    const weights = [0, 30, 90, 180, 365, 730].map((d) => timeDecayWeight(daysAgo(d), NOW));
+    const weights = [0, 30, 90, 180, 365, 730].map(d =>
+      timeDecayWeight(daysAgo(d), NOW),
+    );
     for (let i = 1; i < weights.length; i++) {
       expect(weights[i]).toBeLessThan(weights[i - 1]);
     }

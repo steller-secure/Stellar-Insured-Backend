@@ -11,7 +11,8 @@ export class WalletAddressDto {
     return sanitizeString(value);
   })
   @Matches(/^[A-Za-z0-9_\-.@]+$/, {
-    message: 'Wallet address must only contain alphanumeric characters and _-.@',
+    message:
+      'Wallet address must only contain alphanumeric characters and _-.@',
   })
   address: string;
 }

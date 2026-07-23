@@ -24,14 +24,18 @@ describe('EncryptionService', () => {
   describe('constructor', () => {
     it('should throw if ENCRYPTION_KEYS is not configured', () => {
       const badConfig = { get: jest.fn().mockReturnValue(null) } as any;
-      expect(() => new EncryptionService(badConfig)).toThrow('ENCRYPTION_KEYS environment variable is required');
+      expect(() => new EncryptionService(badConfig)).toThrow(
+        'ENCRYPTION_KEYS environment variable is required',
+      );
     });
 
     it('should throw if key format is invalid', () => {
       const badConfig = {
         get: jest.fn().mockReturnValue('invalid-format'),
       } as any;
-      expect(() => new EncryptionService(badConfig)).toThrow('Invalid encryption key format');
+      expect(() => new EncryptionService(badConfig)).toThrow(
+        'Invalid encryption key format',
+      );
     });
 
     it('should throw if key is not 32 bytes', () => {
@@ -39,7 +43,9 @@ describe('EncryptionService', () => {
       const badConfig = {
         get: jest.fn().mockReturnValue(`v1:${shortKey}`),
       } as any;
-      expect(() => new EncryptionService(badConfig)).toThrow('must be 32 bytes');
+      expect(() => new EncryptionService(badConfig)).toThrow(
+        'must be 32 bytes',
+      );
     });
   });
 
@@ -92,11 +98,15 @@ describe('EncryptionService', () => {
 
   describe('decrypt error handling', () => {
     it('should throw on invalid format (not enough parts)', () => {
-      expect(() => service.decrypt('invalid')).toThrow('Invalid encrypted text format');
+      expect(() => service.decrypt('invalid')).toThrow(
+        'Invalid encrypted text format',
+      );
     });
 
     it('should throw on unknown key version', () => {
-      expect(() => service.decrypt('v99:abc:def:ghi')).toThrow('Encryption key version v99 not found');
+      expect(() => service.decrypt('v99:abc:def:ghi')).toThrow(
+        'Encryption key version v99 not found',
+      );
     });
 
     it('should throw on tampered ciphertext', () => {

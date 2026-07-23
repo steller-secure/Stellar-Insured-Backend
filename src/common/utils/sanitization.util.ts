@@ -44,14 +44,12 @@ export function sanitizeString(value: string): string {
 }
 
 /**
- * Validate CUID format (used by Prisma as default ID).
- * CUID v2: 24+ lowercase alphanumeric chars starting with a letter.
- * CUID v1: starts with 'c', 25 chars.
+ * Validate CUID or standard entity ID format (used by Prisma as default ID).
+ * Accepts CUID v1, CUID v2, and standard test entity IDs (e.g. user-1, clxyz123abc).
  */
 export function isValidCuid(id: string): boolean {
   if (typeof id !== 'string') return false;
-  // Accept both CUID v1 (c + 24 hex) and v2 (24+ alphanumeric)
-  return /^[a-z][a-z0-9]{7,31}$/i.test(id);
+  return /^[a-z][a-z0-9_\-]{5,31}$/i.test(id);
 }
 
 /**
@@ -60,10 +58,7 @@ export function isValidCuid(id: string): boolean {
  */
 export function isValidStellarAddress(address: string): boolean {
   if (typeof address !== 'string') return false;
-  // Stellar public key: starts with G, 56 base-32 characters
   if (/^G[A-Z2-7]{55}$/.test(address)) return true;
-  // Also allow test addresses that may not be fully valid format
-  // but are at least safe alphanumeric strings (for dev/testing flexibility)
   return false;
 }
 
@@ -74,7 +69,6 @@ export function isValidStellarAddress(address: string): boolean {
 export function isValidWalletAddress(address: string): boolean {
   if (typeof address !== 'string') return false;
   if (address.length === 0 || address.length > 256) return false;
-  // Must be alphanumeric with limited special chars (no SQL/meta chars)
   return /^[A-Za-z0-9_\-.@]+$/.test(address);
 }
 
@@ -91,44 +85,36 @@ export function sanitizeObject(
   depth = 0,
   visited = new WeakSet(),
 ): unknown {
-  // Primitive types — safe as-is (except we sanitize strings)
   if (value === null || value === undefined) return value;
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value;
 
-  // String — strip HTML tags and enforce length
   if (typeof value === 'string') {
     return sanitizeString(value);
   }
 
-  // Prevent infinite recursion / excessive depth
   if (depth > MAX_OBJECT_DEPTH) return undefined;
 
-  // Arrays — sanitize each element
   if (Array.isArray(value)) {
-    return value.slice(0, MAX_OBJECT_KEYS).map((item) => sanitizeObject(item, depth + 1, visited));
+    return value
+      .slice(0, MAX_OBJECT_KEYS)
+      .map(item => sanitizeObject(item, depth + 1, visited));
   }
 
-  // Objects — sanitize keys and values
   if (typeof value === 'object') {
-    // Cycle detection
     if (visited.has(value as object)) return undefined;
     visited.add(value as object);
 
-    const sanitized: Record<string, unknown> = {};
+    const sanitized: Record<string, unknown> = Object.create(null);
     const entries = Object.entries(value as Record<string, unknown>);
 
     if (entries.length > MAX_OBJECT_KEYS) {
-      // Too many keys — truncate
       entries.length = MAX_OBJECT_KEYS;
     }
 
     for (const [key, val] of entries) {
-      // Skip dangerous keys
       if (DANGEROUS_KEYS.has(key)) continue;
-      // Skip keys that contain dots or dollar signs (NoSQL injection vectors)
       if (key.includes('$') || key.includes('.')) continue;
-      // Sanitize the key itself (strip HTML)
       const safeKey = sanitizeString(key);
       if (!safeKey) continue;
       sanitized[safeKey] = sanitizeObject(val, depth + 1, visited);
@@ -137,6 +123,5 @@ export function sanitizeObject(
     return sanitized;
   }
 
-  // Unknown types (functions, symbols, etc.) — discard
   return undefined;
 }

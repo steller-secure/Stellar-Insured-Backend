@@ -34,8 +34,12 @@ export class ReputationService {
    * @param reason  Human-readable description recorded in ReputationHistory.
    * @returns       The new clamped reputationScore.
    */
-  async adjustReputation(userId: string, delta: number, reason: string): Promise<number> {
-    const newScore = await this.prisma.$transaction(async (tx) => {
+  async adjustReputation(
+    userId: string,
+    delta: number,
+    reason: string,
+  ): Promise<number> {
+    const newScore = await this.prisma.$transaction(async tx => {
       // Read current score inside the transaction to avoid a race condition.
       const user = await tx.user.findUnique({
         where: { id: userId },

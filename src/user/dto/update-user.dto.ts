@@ -8,7 +8,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { sanitizeString, sanitizeObject } from '../../common/utils/sanitization.util';
+import {
+  sanitizeString,
+  sanitizeObject,
+} from '../../common/utils/sanitization.util';
 
 /**
  * Allowed profile data shape – restricts keys to known safe fields
@@ -18,19 +21,25 @@ export class ProfileDataDto {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? sanitizeString(value) : value,
+  )
   displayName?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? sanitizeString(value) : value,
+  )
   bio?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? sanitizeString(value) : value,
+  )
   avatarUrl?: string;
 }
 
@@ -39,7 +48,9 @@ export class UpdateUserDto {
   @IsEmail()
   @IsOptional()
   @MaxLength(254)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? sanitizeString(value) : value,
+  )
   email?: string;
 
   @ApiPropertyOptional({

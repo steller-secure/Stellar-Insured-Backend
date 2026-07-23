@@ -34,7 +34,12 @@ const MAX_REPUTATION = 1000;
  * computeReputationFromHistory([{ scoreChange: 10 }, { scoreChange: -20 }]);
  * // → clamp(50 + 10 - 20, 0, 1000) = 40
  */
-export function computeReputationFromHistory(history: ReputationHistoryEntry[]): number {
-  const total = history.reduce((acc, entry) => acc + entry.scoreChange, BASE_SCORE);
+export function computeReputationFromHistory(
+  history: ReputationHistoryEntry[],
+): number {
+  const total = history.reduce(
+    (acc, entry) => acc + entry.scoreChange,
+    BASE_SCORE,
+  );
   return Math.max(MIN_REPUTATION, Math.min(MAX_REPUTATION, total));
 }

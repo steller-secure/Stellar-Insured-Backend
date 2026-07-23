@@ -4,7 +4,10 @@
  * @param value The value to check
  * @returns true if value is a valid enum member
  */
-export function isValidEnum<T extends object>(enumType: T, value: string): boolean {
+export function isValidEnum<T extends object>(
+  enumType: T,
+  value: string,
+): boolean {
   return Object.values(enumType).includes(value as T[keyof T]);
 }
 
@@ -24,9 +27,15 @@ export function getEnumValues<T extends object>(enumType: T): T[keyof T][] {
  * @param fieldName Name of the field for error message
  * @throws Error if value is not a valid enum member
  */
-export function validateEnum<T extends object>(enumType: T, value: string, fieldName: string): void {
+export function validateEnum<T extends object>(
+  enumType: T,
+  value: string,
+  fieldName: string,
+): void {
   if (!isValidEnum(enumType, value)) {
     const validValues = Object.values(enumType).join(', ');
-    throw new Error(`Invalid ${fieldName}: "${value}". Valid values are: ${validValues}`);
+    throw new Error(
+      `Invalid ${fieldName}: "${value}". Valid values are: ${validValues}`,
+    );
   }
 }

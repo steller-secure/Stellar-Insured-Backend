@@ -42,7 +42,9 @@ export class CreateContributionDto {
   @ApiProperty()
   projectId: string;
 
-  @ApiProperty({ description: 'Contribution amount as string (will be converted to BigInt)' })
+  @ApiProperty({
+    description: 'Contribution amount as string (will be converted to BigInt)',
+  })
   amount: string;
 }
 

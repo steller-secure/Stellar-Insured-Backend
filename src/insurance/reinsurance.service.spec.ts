@@ -1,6 +1,7 @@
 import { ReinsuranceService } from './reinsurance.service';
 import { PrismaService } from '../prisma.service';
-import { AuditService } from './services/audit.service';
+import { DomainEventBus } from '../common/events/domain-event-bus.service';
+import { DomainEventName } from '../common/events/event-types';
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
@@ -13,15 +14,10 @@ interface MockPrismaService {
   };
 }
 
-interface MockAuditService {
-  logCreate: jest.Mock;
-  logDelete: jest.Mock;
-}
-
 describe('ReinsuranceService', () => {
   let service: ReinsuranceService;
   let prisma: MockPrismaService;
-  let auditService: MockAuditService;
+  let eventBus: { emit: jest.Mock; on: jest.Mock };
 
   beforeEach(() => {
     prisma = {
@@ -33,20 +29,20 @@ describe('ReinsuranceService', () => {
       },
     };
 
-    auditService = {
-      logCreate: jest.fn(),
-      logDelete: jest.fn(),
+    eventBus = {
+      emit: jest.fn().mockResolvedValue({ id: 'evt-1' }),
+      on: jest.fn(),
     };
 
     service = new ReinsuranceService(
       prisma as unknown as PrismaService,
-      auditService as unknown as AuditService,
+      eventBus as unknown as DomainEventBus,
     );
     jest.clearAllMocks();
   });
 
   describe('createContract', () => {
-    it('should create and save a reinsurance contract', async () => {
+    it('should create and save a reinsurance contract and emit REINSURANCE_CONTRACT_CREATED event', async () => {
       const contractData = {
         poolId: 'pool-1',
         coverageLimit: 50000,
@@ -66,7 +62,11 @@ describe('ReinsuranceService', () => {
       };
       prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
 
-      const result = await service.createContract('pool-1', new Prisma.Decimal(50000), new Prisma.Decimal(0.02));
+      const result = await service.createContract(
+        'pool-1',
+        new Prisma.Decimal(50000),
+        new Prisma.Decimal(0.02),
+      );
 
       expect(mockTx.reinsuranceContract.create).toHaveBeenCalledWith({
         data: {
@@ -75,60 +75,11 @@ describe('ReinsuranceService', () => {
           premiumRate: new Prisma.Decimal(0.02),
         },
       });
-      expect(result).toEqual(createdContract);
-    });
-
-    it('should call auditService.logCreate after saving', async () => {
-      const createdContract = {
-        id: 'contract-1',
-        poolId: 'pool-1',
-        coverageLimit: 100000,
-        premiumRate: 0.05,
-        createdAt: new Date(),
-      };
-
-      const mockTx = {
-        reinsuranceContract: {
-          create: jest.fn().mockResolvedValue(createdContract),
-        },
-      };
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
-
-      await service.createContract('pool-1', new Prisma.Decimal(100000), new Prisma.Decimal(0.05));
-
-      expect(auditService.logCreate).toHaveBeenCalledWith(
-        'ReinsuranceContract',
-        'contract-1',
-        createdContract,
-        undefined,
-        undefined,
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.REINSURANCE_CONTRACT_CREATED,
+        expect.objectContaining({ contractId: 'contract-1' }),
       );
-    });
-
-    it('should pass correct parameters to prisma.reinsuranceContract.create', async () => {
-      const createdContract = {
-        id: 'c-2',
-        poolId: 'p-2',
-        coverageLimit: 25000,
-        premiumRate: 0.03,
-      };
-
-      const mockTx = {
-        reinsuranceContract: {
-          create: jest.fn().mockResolvedValue(createdContract),
-        },
-      };
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
-
-      await service.createContract('p-2', new Prisma.Decimal(25000), new Prisma.Decimal(0.03));
-
-      expect(mockTx.reinsuranceContract.create).toHaveBeenCalledWith({
-        data: {
-          poolId: 'p-2',
-          coverageLimit: new Prisma.Decimal(25000),
-          premiumRate: new Prisma.Decimal(0.03),
-        },
-      });
+      expect(result).toEqual(createdContract);
     });
   });
 
@@ -148,7 +99,7 @@ describe('ReinsuranceService', () => {
       );
     });
 
-    it('should delete the reinsurance contract and audit the release', async () => {
+    it('should delete the reinsurance contract and emit REINSURANCE_CONTRACT_RELEASED event', async () => {
       const contract = {
         id: 'contract-1',
         poolId: 'pool-1',
@@ -171,14 +122,11 @@ describe('ReinsuranceService', () => {
       expect(mockTx.reinsuranceContract.delete).toHaveBeenCalledWith({
         where: { id: 'contract-1' },
       });
-      expect(result).toEqual(contract);
-      expect(auditService.logDelete).toHaveBeenCalledWith(
-        'ReinsuranceContract',
-        'contract-1',
-        expect.any(Object),
-        undefined,
-        'Reinsurance contract released',
+      expect(eventBus.emit).toHaveBeenCalledWith(
+        DomainEventName.REINSURANCE_CONTRACT_RELEASED,
+        expect.objectContaining({ contractId: 'contract-1' }),
       );
+      expect(result).toEqual(contract);
     });
   });
 });

@@ -38,12 +38,16 @@ describe('computeReputationFromHistory', () => {
   it('is order-independent (deterministic regardless of insertion order)', () => {
     const a = [entry(10), entry(-5), entry(15)];
     const b = [entry(15), entry(10), entry(-5)];
-    expect(computeReputationFromHistory(a)).toBe(computeReputationFromHistory(b));
+    expect(computeReputationFromHistory(a)).toBe(
+      computeReputationFromHistory(b),
+    );
   });
 
   it('returns the same value on repeated calls with the same input', () => {
     const history = [entry(10), entry(-5), entry(20)];
-    expect(computeReputationFromHistory(history)).toBe(computeReputationFromHistory(history));
+    expect(computeReputationFromHistory(history)).toBe(
+      computeReputationFromHistory(history),
+    );
   });
 
   it('handles a realistic claim approve → fraud detected sequence', () => {

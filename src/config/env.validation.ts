@@ -231,7 +231,7 @@ function assertJwtStrength(
 ): void {
   const lower = value.toLowerCase();
 
-  if (WEAK_JWT_PLACEHOLDERS.some((p) => lower.includes(p))) {
+  if (WEAK_JWT_PLACEHOLDERS.some(p => lower.includes(p))) {
     throw new Error(
       `${fieldName} contains a placeholder value. ` +
         `Replace it with a strong random secret: openssl rand -base64 48`,

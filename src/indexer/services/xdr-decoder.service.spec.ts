@@ -42,7 +42,7 @@ describe('XdrDecoderService', () => {
           deadline: 1700000000,
           token: 'USDC',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.fundingGoal).toBe('1000000');
           expect(d.deadline).toBe(1700000000);
@@ -53,7 +53,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.PROJECT_FUNDED,
         fixture: { project_id: 7, amount: '250000', total_raised: '250000' },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.amount).toBe('250000');
           expect(d.totalRaised).toBe('250000');
@@ -62,7 +62,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.PROJECT_COMPLETED,
         fixture: { project_id: 7, status: 'completed' },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.status).toBe('completed');
         },
@@ -70,7 +70,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.PROJECT_FAILED,
         fixture: { project_id: 7, status: 'failed' },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.status).toBe('failed');
         },
@@ -79,11 +79,12 @@ describe('XdrDecoderService', () => {
         type: ContractEventType.CONTRIBUTION_MADE,
         fixture: {
           project_id: 7,
-          contributor: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
+          contributor:
+            'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           amount: '50000',
           total_raised: '300000',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.amount).toBe('50000');
           expect(d.totalRaised).toBe('300000');
@@ -94,10 +95,11 @@ describe('XdrDecoderService', () => {
         type: ContractEventType.REFUND_ISSUED,
         fixture: {
           project_id: 7,
-          contributor: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
+          contributor:
+            'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           amount: '50000',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.amount).toBe('50000');
         },
@@ -105,7 +107,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.ESCROW_INITIALIZED,
         fixture: { project_id: 7, escrow_id: 'ESC1', total_amount: '1000000' },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.escrowId).toBe('ESC1');
         },
@@ -113,7 +115,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.FUNDS_LOCKED,
         fixture: { project_id: 7, milestone_id: 2, amount: '100000' },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.milestoneId).toBe(2);
           expect(d.amount).toBe('100000');
@@ -122,7 +124,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.FUNDS_RELEASED,
         fixture: { project_id: 7, milestone_id: 2, amount: '100000' },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.milestoneId).toBe(2);
           expect(d.amount).toBe('100000');
@@ -131,7 +133,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.MILESTONE_CREATED,
         fixture: { project_id: 7, milestone_id: 1, funding_amount: '100000' },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.milestoneId).toBe(1);
         },
@@ -143,7 +145,7 @@ describe('XdrDecoderService', () => {
           milestone_id: 1,
           submitter: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.milestoneId).toBe(1);
         },
@@ -151,7 +153,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.MILESTONE_APPROVED,
         fixture: { project_id: 7, milestone_id: 1, approval_count: 3 },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.milestoneId).toBe(1);
           expect(d.approvalCount).toBe(3);
@@ -160,7 +162,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.MILESTONE_REJECTED,
         fixture: { project_id: 7, milestone_id: 1, rejection_count: 2 },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.milestoneId).toBe(1);
           expect(d.rejectionCount).toBe(2);
@@ -169,7 +171,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.MILESTONE_COMPLETED,
         fixture: { project_id: 7, milestone_id: 1 },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.milestoneId).toBe(1);
         },
@@ -183,7 +185,7 @@ describe('XdrDecoderService', () => {
             'GB7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2I',
           ],
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.projectId).toBe(7);
           expect(d.validatorCount).toBe(2);
         },
@@ -191,7 +193,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.PROFIT_DISTRIBUTED,
         fixture: { pool_id: 'POOL1', total_profit: '5000', per_share: '50' },
-        assert: (d) => {
+        assert: d => {
           expect(d.poolId).toBe('POOL1');
           expect(d.totalProfit).toBe('5000');
         },
@@ -203,7 +205,7 @@ describe('XdrDecoderService', () => {
           claimer: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           amount: '50',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.poolId).toBe('POOL1');
           expect(d.amount).toBe('50');
           expect(d.claimer).toContain('GA7');
@@ -216,7 +218,7 @@ describe('XdrDecoderService', () => {
           proposer: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           title: 'Raise cap',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.proposalId).toBe(4);
           expect(d.title).toBe('Raise cap');
         },
@@ -228,7 +230,7 @@ describe('XdrDecoderService', () => {
           voter: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           support: 'yes',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.proposalId).toBe(4);
           expect(d.support).toBe('yes');
         },
@@ -236,15 +238,17 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.PROPOSAL_EXECUTED,
         fixture: { proposal_id: 4, success: true },
-        assert: (d) => {
+        assert: d => {
           expect(d.proposalId).toBe(4);
           expect(d.success).toBe(true);
         },
       },
       {
         type: ContractEventType.USER_REGISTERED,
-        fixture: { user: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H' },
-        assert: (d) => {
+        fixture: {
+          user: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
+        },
+        assert: d => {
           expect(d.user).toContain('GA7');
         },
       },
@@ -255,7 +259,7 @@ describe('XdrDecoderService', () => {
           score: 42,
           delta: 5,
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.score).toBe(42);
           expect(d.delta).toBe(5);
         },
@@ -266,7 +270,7 @@ describe('XdrDecoderService', () => {
           user: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           badge: 'OG',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.badge).toBe('OG');
         },
       },
@@ -277,14 +281,14 @@ describe('XdrDecoderService', () => {
           payer: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           payee: 'GB7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2I',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.paymentId).toBe('PAY1');
         },
       },
       {
         type: ContractEventType.PAYMENT_RECEIVED,
         fixture: { payment_id: 'PAY1', amount: '100' },
-        assert: (d) => {
+        assert: d => {
           expect(d.paymentId).toBe('PAY1');
           expect(d.amount).toBe('100');
         },
@@ -296,7 +300,7 @@ describe('XdrDecoderService', () => {
           recipient: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           amount: '100',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.paymentId).toBe('PAY1');
           expect(d.amount).toBe('100');
         },
@@ -305,11 +309,12 @@ describe('XdrDecoderService', () => {
         type: ContractEventType.SUBSCRIPTION_CREATED,
         fixture: {
           subscription_id: 'SUB1',
-          subscriber: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
+          subscriber:
+            'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           plan: 'pro',
           amount: '990',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.subscriptionId).toBe('SUB1');
           expect(d.plan).toBe('pro');
         },
@@ -317,7 +322,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.SUBSCRIPTION_CANCELLED,
         fixture: { subscription_id: 'SUB1', status: 'cancelled' },
-        assert: (d) => {
+        assert: d => {
           expect(d.subscriptionId).toBe('SUB1');
           expect(d.status).toBe('cancelled');
         },
@@ -325,7 +330,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.SUBSCRIPTION_MODIFIED,
         fixture: { subscription_id: 'SUB1', plan: 'max', amount: '1990' },
-        assert: (d) => {
+        assert: d => {
           expect(d.subscriptionId).toBe('SUB1');
           expect(d.plan).toBe('max');
         },
@@ -333,7 +338,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.SUBSCRIPTION_PAUSED,
         fixture: { subscription_id: 'SUB1', status: 'paused' },
-        assert: (d) => {
+        assert: d => {
           expect(d.subscriptionId).toBe('SUB1');
           expect(d.status).toBe('paused');
         },
@@ -341,7 +346,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.SUBSCRIPTION_RESUMED,
         fixture: { subscription_id: 'SUB1', status: 'active' },
-        assert: (d) => {
+        assert: d => {
           expect(d.subscriptionId).toBe('SUB1');
           expect(d.status).toBe('active');
         },
@@ -349,7 +354,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.PAYMENT_FAILED,
         fixture: { subscription_id: 'SUB1', reason: 'insufficient_funds' },
-        assert: (d) => {
+        assert: d => {
           expect(d.subscriptionId).toBe('SUB1');
           expect(d.reason).toBe('insufficient_funds');
         },
@@ -357,7 +362,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.SUBSCRIPTION_PAYMENT,
         fixture: { subscription_id: 'SUB1', amount: '990' },
-        assert: (d) => {
+        assert: d => {
           expect(d.subscriptionId).toBe('SUB1');
           expect(d.amount).toBe('990');
         },
@@ -368,14 +373,14 @@ describe('XdrDecoderService', () => {
           bridge_id: 'BR1',
           admin: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.bridgeId).toBe('BR1');
         },
       },
       {
         type: ContractEventType.SUPPORTED_CHAIN_ADDED,
         fixture: { chain_id: 5, chain_name: 'Base' },
-        assert: (d) => {
+        assert: d => {
           expect(d.chainId).toBe(5);
           expect(d.chainName).toBe('Base');
         },
@@ -383,14 +388,14 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.SUPPORTED_CHAIN_REMOVED,
         fixture: { chain_id: 5 },
-        assert: (d) => {
+        assert: d => {
           expect(d.chainId).toBe(5);
         },
       },
       {
         type: ContractEventType.ASSET_WRAPPED,
         fixture: { asset: 'USDC', wrapped_asset: 'wUSDC', amount: '1000' },
-        assert: (d) => {
+        assert: d => {
           expect(d.asset).toBe('USDC');
           expect(d.wrappedAsset).toBe('wUSDC');
         },
@@ -398,7 +403,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.ASSET_UNWRAPPED,
         fixture: { asset: 'wUSDC', amount: '1000' },
-        assert: (d) => {
+        assert: d => {
           expect(d.asset).toBe('wUSDC');
         },
       },
@@ -409,7 +414,7 @@ describe('XdrDecoderService', () => {
           depositor: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           amount: '1000',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.chainId).toBe(5);
           expect(d.amount).toBe('1000');
         },
@@ -421,7 +426,7 @@ describe('XdrDecoderService', () => {
           recipient: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
           amount: '1000',
         },
-        assert: (d) => {
+        assert: d => {
           expect(d.chainId).toBe(5);
           expect(d.amount).toBe('1000');
         },
@@ -429,35 +434,39 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.BRIDGE_PAUSED,
         fixture: { bridge_id: 'BR1' },
-        assert: (d) => {
+        assert: d => {
           expect(d.bridgeId).toBe('BR1');
         },
       },
       {
         type: ContractEventType.BRIDGE_UNPAUSED,
         fixture: { bridge_id: 'BR1' },
-        assert: (d) => {
+        assert: d => {
           expect(d.bridgeId).toBe('BR1');
         },
       },
       {
         type: ContractEventType.RELAYER_ADDED,
-        fixture: { relayer: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H' },
-        assert: (d) => {
+        fixture: {
+          relayer: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
+        },
+        assert: d => {
           expect(d.relayer).toContain('GA7');
         },
       },
       {
         type: ContractEventType.RELAYER_REMOVED,
-        fixture: { relayer: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H' },
-        assert: (d) => {
+        fixture: {
+          relayer: 'GA7QFKA2OGDWPNTZ35B2AJQA3HSEWWQBIR2FA3ZWEX37MQSUDUXCTX2H',
+        },
+        assert: d => {
           expect(d.relayer).toContain('GA7');
         },
       },
       {
         type: ContractEventType.BRIDGE_TX_CONFIRMED,
         fixture: { tx_hash: '0xabc', status: 'confirmed' },
-        assert: (d) => {
+        assert: d => {
           expect(d.txHash).toBe('0xabc');
           expect(d.status).toBe('confirmed');
         },
@@ -465,7 +474,7 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.BRIDGE_TX_FAILED,
         fixture: { tx_hash: '0xabc', status: 'failed' },
-        assert: (d) => {
+        assert: d => {
           expect(d.txHash).toBe('0xabc');
           expect(d.status).toBe('failed');
         },
@@ -473,21 +482,21 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.CONTRACT_PAUSED,
         fixture: { contract_id: 'C1' },
-        assert: (d) => {
+        assert: d => {
           expect(d.contractId).toBe('C1');
         },
       },
       {
         type: ContractEventType.CONTRACT_RESUMED,
         fixture: { contract_id: 'C1' },
-        assert: (d) => {
+        assert: d => {
           expect(d.contractId).toBe('C1');
         },
       },
       {
         type: ContractEventType.UPGRADE_SCHEDULED,
         fixture: { contract_id: 'C1', new_wasm_hash: '0xdeadbeef' },
-        assert: (d) => {
+        assert: d => {
           expect(d.contractId).toBe('C1');
           expect(d.newWasmHash).toBe('0xdeadbeef');
         },
@@ -495,20 +504,20 @@ describe('XdrDecoderService', () => {
       {
         type: ContractEventType.UPGRADE_EXECUTED,
         fixture: { contract_id: 'C1', new_wasm_hash: '0xdeadbeef' },
-        assert: (d) => {
+        assert: d => {
           expect(d.contractId).toBe('C1');
         },
       },
       {
         type: ContractEventType.UPGRADE_CANCELLED,
         fixture: { contract_id: 'C1', new_wasm_hash: '0xdeadbeef' },
-        assert: (d) => {
+        assert: d => {
           expect(d.contractId).toBe('C1');
         },
       },
     ];
 
-    it.each(cases.map((c) => [c.type, c] as const))(
+    it.each(cases.map(c => [c.type, c] as const))(
       'decodes %s into structured fields',
       (_type, c) => {
         const xdrStr = toXdr(c.fixture);
@@ -530,7 +539,10 @@ describe('XdrDecoderService', () => {
 
   describe('quarantine (unknown/garbage XDR)', () => {
     it('does not throw and marks bad base64 XDR as quarantined', () => {
-      const decoded = service.decode('!!!not-valid-base64-xdr!!!', ContractEventType.CONTRIBUTION_MADE);
+      const decoded = service.decode(
+        '!!!not-valid-base64-xdr!!!',
+        ContractEventType.CONTRIBUTION_MADE,
+      );
       expect((decoded.data as any)._quarantined).toBe(true);
       expect(typeof (decoded.data as any)._quarantineReason).toBe('string');
       expect((decoded.data as any).rawXdr).toBe('!!!not-valid-base64-xdr!!!');
@@ -538,14 +550,22 @@ describe('XdrDecoderService', () => {
 
     it('does not throw and marks structurally wrong XDR as quarantined', () => {
       // Valid base64 but not a ScVal - should be quarantined, not crash.
-      const garbage = Buffer.from('this is not an xdr scval').toString('base64');
-      const decoded = service.decode(garbage, ContractEventType.PROJECT_CREATED);
+      const garbage = Buffer.from('this is not an xdr scval').toString(
+        'base64',
+      );
+      const decoded = service.decode(
+        garbage,
+        ContractEventType.PROJECT_CREATED,
+      );
       expect((decoded.data as any)._quarantined).toBe(true);
     });
 
     it('returns a decodable but unrecognized shape without quarantining', () => {
       const xdrStr = toXdr({ some_unknown_field: 123 });
-      const decoded = service.decode(xdrStr, 'definitely_unknown' as ContractEventType);
+      const decoded = service.decode(
+        xdrStr,
+        'definitely_unknown' as ContractEventType,
+      );
       expect((decoded.data as any)._quarantined).toBeUndefined();
       expect(decoded.data.some_unknown_field).toBe('123');
     });

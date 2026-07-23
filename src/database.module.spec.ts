@@ -47,7 +47,7 @@ describe('DatabaseModule - ORM Architecture Regression Tests', () => {
       // Get the module metadata
       const metadataKey = 'exports';
       const dbModule = module.get(DatabaseModule);
-      
+
       // PrismaService should be available in the module
       expect(prismaService).toBeDefined();
     });

@@ -3,7 +3,7 @@ import { SerializationTransformer } from './serialization.util';
 describe('SerializationTransformer', () => {
   describe('transform', () => {
     it('should convert BigInt to string', () => {
-      const input = BigInt(12345678901234567890);
+      const input = BigInt('12345678901234567890');
       const result = SerializationTransformer.transform(input);
       expect(result).toBe('12345678901234567890');
       expect(typeof result).toBe('string');
@@ -146,7 +146,10 @@ describe('SerializationTransformer', () => {
         normalField: 'test',
         anotherField: 456,
       };
-      const result = SerializationTransformer.transformPartial(input, ['bigIntField', 'normalField']);
+      const result = SerializationTransformer.transformPartial(input, [
+        'bigIntField',
+        'normalField',
+      ]);
       expect(result).toEqual({
         bigIntField: '123',
         normalField: 'test',
@@ -155,7 +158,10 @@ describe('SerializationTransformer', () => {
 
     it('should handle missing fields gracefully', () => {
       const input = { bigIntField: BigInt(123) };
-      const result = SerializationTransformer.transformPartial(input, ['bigIntField', 'missingField' as any]);
+      const result = SerializationTransformer.transformPartial(input, [
+        'bigIntField',
+        'missingField' as any,
+      ]);
       expect(result).toEqual({
         bigIntField: '123',
       });
