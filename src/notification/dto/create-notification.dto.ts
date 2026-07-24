@@ -1,21 +1,13 @@
-import { IsString, IsEnum, IsOptional, IsObject } from 'class-validator';
+import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { NotificationType } from '../enums/notification-type.enum';
 
-export class CreateNotificationDto {
-  @IsString()
-  userId!: string;
+export const createNotificationSchema = z.object({
+  userId: z.string(),
+  type: z.nativeEnum(NotificationType),
+  title: z.string(),
+  message: z.string(),
+  data: z.record(z.string(), z.any()).optional(),
+});
 
-  @IsEnum(NotificationType)
-  type!: NotificationType;
-
-  @IsString()
-  title!: string;
-
-  @IsString()
-  message!: string;
-
-  @IsOptional()
-  @IsObject()
-  data?: Prisma.InputJsonObject;
-}
+export type CreateNotificationDto = z.infer<typeof createNotificationSchema>;

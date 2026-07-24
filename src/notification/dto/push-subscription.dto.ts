@@ -1,33 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsObject, IsOptional, ValidateNested, IsNotEmpty } from 'class-validator';
-import { Type } from 'class-transformer';
+import { z } from 'zod';
 
-export class PushSubscriptionKeysDto {
-  @ApiProperty({ description: 'Base64-encoded P-256 DH public key' })
-  @IsString()
-  @IsNotEmpty()
-  p256dh: string;
+export const pushSubscriptionKeysSchema = z.object({
+  p256dh: z.string().min(1),
+  auth: z.string().min(1),
+});
 
-  @ApiProperty({ description: 'Base64-encoded auth secret' })
-  @IsString()
-  @IsNotEmpty()
-  auth: string;
-}
+export type PushSubscriptionKeysDto = z.infer<typeof pushSubscriptionKeysSchema>;
 
-export class PushSubscriptionDto {
-  @ApiProperty({ description: 'Push service endpoint URL' })
-  @IsString()
-  @IsNotEmpty()
-  endpoint: string;
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().min(1),
+  keys: pushSubscriptionKeysSchema,
+  expirationTime: z.string().optional(),
+});
 
-  @ApiProperty({ description: 'Encryption keys for the push subscription', type: PushSubscriptionKeysDto })
-  @IsObject()
-  @ValidateNested()
-  @Type(() => PushSubscriptionKeysDto)
-  keys: PushSubscriptionKeysDto;
-
-  @ApiPropertyOptional({ description: 'Optional expiration timestamp for the subscription' })
-  @IsOptional()
-  @IsString()
-  expirationTime?: string;
-}
+export type PushSubscriptionDto = z.infer<typeof pushSubscriptionSchema>;

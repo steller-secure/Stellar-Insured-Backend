@@ -1,18 +1,10 @@
-import { IsString, IsNotEmpty, MaxLength, Matches } from 'class-validator';
-import { Transform } from 'class-transformer';
-import { sanitizeString, isValidCuid } from '../../common/utils/sanitization.util';
+import { z } from 'zod';
+import { sanitizeString } from '../../common/utils/sanitization.util';
 
-export class UserParamsDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(64)
-  @Transform(({ value }) => {
-    if (typeof value !== 'string') return value;
-    const sanitized = sanitizeString(value);
-    return sanitized;
-  })
-  @Matches(/^[a-zA-Z0-9]+$/, {
+export const userParamsSchema = z.object({
+  id: z.string().min(1).max(64).regex(/^[a-zA-Z0-9]+$/, {
     message: 'id must be alphanumeric (CUID format)',
-  })
-  id: string;
-}
+  }).transform(sanitizeString),
+});
+
+export type UserParamsDto = z.infer<typeof userParamsSchema>;

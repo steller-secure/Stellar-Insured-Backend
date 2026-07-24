@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { rpc as SorobanRpc } from 'stellar-sdk';
+import { rpc as SorobanRpc } from '@stellar/stellar-sdk';
 import { PrismaService } from '../../prisma.service';
 import { LedgerTrackerService } from './ledger-tracker.service';
 import { EventHandlerService } from './event-handler.service';
@@ -321,7 +321,6 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
     do {
       const request = {
-        startLedger,
         filters,
         limit: this.maxEventsPerFetch,
         cursor,
@@ -357,7 +356,7 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
       ledgerClosedAt: event.ledgerClosedAt,
       contractId: event.contractId.toString(),
       id: event.id,
-      pagingToken: event.pagingToken,
+      pagingToken: event.id, // Use event.id as paging token in new SDK
       topic: event.topic.map((t: any) => t.toString()),
       value: event.value.toString(),
       inSuccessfulContractCall: event.inSuccessfulContractCall,

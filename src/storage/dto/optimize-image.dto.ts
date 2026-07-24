@@ -1,22 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsPositive, IsString, Min, Max } from 'class-validator';
+import { z } from 'zod';
 
-export class OptimizeImageDto {
-  @ApiProperty({ description: 'Path to an existing image file' })
-  @IsString()
-  imagePath!: string;
+export const optimizeImageSchema = z.object({
+  imagePath: z.string(),
+  width: z.number().int().positive().min(1).max(8192),
+  height: z.number().int().positive().min(1).max(8192),
+});
 
-  @ApiProperty({ description: 'Target width in pixels', minimum: 1, maximum: 8192 })
-  @IsInt()
-  @IsPositive()
-  @Min(1)
-  @Max(8192)
-  width!: number;
-
-  @ApiProperty({ description: 'Target height in pixels', minimum: 1, maximum: 8192 })
-  @IsInt()
-  @IsPositive()
-  @Min(1)
-  @Max(8192)
-  height!: number;
-}
+export type OptimizeImageDto = z.infer<typeof optimizeImageSchema>;

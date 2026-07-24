@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType, Logger } from '@nestjs/common';
+import { VersioningType, Logger } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -84,18 +84,9 @@ async function bootstrap() {
   // to CSRF attacks. Security is maintained through proper CORS configuration, JWT validation,
   // and rate limiting.
 
-  // Global validation pipe
-  // - removes non-whitelisted properties
-  // - rejects unrecognized payload fields
-  // - keeps runtime types safe by avoiding implicit conversion
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: false },
-    }),
-  );
+  // Note: Validation is now handled per-controller using ZodValidationPipe
+  // instead of a global ValidationPipe. This provides better type safety and
+  // consistency with the Zod schema validation approach.
 
   // API prefix - version is now handled by NestJS versioning
   const apiPrefix = configService.get<string>('app.apiPrefix', 'api');

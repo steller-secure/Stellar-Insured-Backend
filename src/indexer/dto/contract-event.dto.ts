@@ -1,132 +1,73 @@
-import { IsString, IsNumber, IsBoolean, IsOptional, IsObject, IsDate } from 'class-validator';
-import { Type } from 'class-transformer';
+import { z } from 'zod';
 
 /**
- * DTO for contract event data
+ * Zod schema for contract event data
  */
-export class ContractEventDto {
-  @IsString()
-  eventId: string;
+export const ContractEventSchema = z.object({
+  eventId: z.string(),
+  ledgerSeq: z.number(),
+  ledgerClosedAt: z.coerce.date(),
+  contractId: z.string(),
+  eventType: z.string(),
+  transactionHash: z.string(),
+  data: z.record(z.string(), z.unknown()),
+  quarantined: z.boolean().optional(),
+  inSuccessfulContractCall: z.boolean(),
+});
 
-  @IsNumber()
-  ledgerSeq: number;
-
-  @IsDate()
-  @Type(() => Date)
-  ledgerClosedAt: Date;
-
-  @IsString()
-  contractId: string;
-
-  @IsString()
-  eventType: string;
-
-  @IsString()
-  transactionHash: string;
-
-  @IsObject()
-  data: Record<string, unknown>;
-
-  @IsBoolean()
-  @IsOptional()
-  quarantined?: boolean;
-
-  @IsBoolean()
-  inSuccessfulContractCall: boolean;
-}
+export type ContractEventDto = z.infer<typeof ContractEventSchema>;
 
 /**
- * DTO describing a quarantined (undecodable) event persisted for inspection.
+ * Zod schema for a quarantined (undecodable) event persisted for inspection.
  */
-export class QuarantinedEventDto {
-  @IsString()
-  eventId: string;
+export const QuarantinedEventSchema = z.object({
+  eventId: z.string(),
+  network: z.string(),
+  contractId: z.string(),
+  eventType: z.string(),
+  ledgerSeq: z.number(),
+  transactionHash: z.string(),
+  rawXdr: z.string(),
+  reason: z.string(),
+});
 
-  @IsString()
-  network: string;
-
-  @IsString()
-  contractId: string;
-
-  @IsString()
-  eventType: string;
-
-  @IsNumber()
-  ledgerSeq: number;
-
-  @IsString()
-  transactionHash: string;
-
-  @IsString()
-  rawXdr: string;
-
-  @IsString()
-  reason: string;
-}
+export type QuarantinedEventDto = z.infer<typeof QuarantinedEventSchema>;
 
 /**
- * DTO for event query parameters
+ * Zod schema for event query parameters
  */
-export class EventQueryDto {
-  @IsNumber()
-  @IsOptional()
-  startLedger?: number;
+export const EventQuerySchema = z.object({
+  startLedger: z.number().optional(),
+  endLedger: z.number().optional(),
+  contractId: z.string().optional(),
+  eventType: z.string().optional(),
+  limit: z.number().optional(),
+  cursor: z.string().optional(),
+});
 
-  @IsNumber()
-  @IsOptional()
-  endLedger?: number;
-
-  @IsString()
-  @IsOptional()
-  contractId?: string;
-
-  @IsString()
-  @IsOptional()
-  eventType?: string;
-
-  @IsNumber()
-  @IsOptional()
-  limit?: number;
-
-  @IsString()
-  @IsOptional()
-  cursor?: string;
-}
+export type EventQueryDto = z.infer<typeof EventQuerySchema>;
 
 /**
- * DTO for ledger cursor update
+ * Zod schema for ledger cursor update
  */
-export class UpdateLedgerCursorDto {
-  @IsString()
-  network: string;
+export const UpdateLedgerCursorSchema = z.object({
+  network: z.string(),
+  lastLedgerSeq: z.number(),
+  lastLedgerHash: z.string().optional(),
+});
 
-  @IsNumber()
-  lastLedgerSeq: number;
-
-  @IsString()
-  @IsOptional()
-  lastLedgerHash?: string;
-}
+export type UpdateLedgerCursorDto = z.infer<typeof UpdateLedgerCursorSchema>;
 
 /**
- * DTO for processed event tracking
+ * Zod schema for processed event tracking
  */
-export class ProcessedEventDto {
-  @IsString()
-  eventId: string;
+export const ProcessedEventSchema = z.object({
+  eventId: z.string(),
+  network: z.string(),
+  ledgerSeq: z.number(),
+  contractId: z.string(),
+  eventType: z.string(),
+  transactionHash: z.string(),
+});
 
-  @IsString()
-  network: string;
-
-  @IsNumber()
-  ledgerSeq: number;
-
-  @IsString()
-  contractId: string;
-
-  @IsString()
-  eventType: string;
-
-  @IsString()
-  transactionHash: string;
-}
+export type ProcessedEventDto = z.infer<typeof ProcessedEventSchema>;

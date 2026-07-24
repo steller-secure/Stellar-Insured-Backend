@@ -108,13 +108,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
-      // class-validator pipe errors arrive as an object with a `message` array.
+      // Zod validation pipe errors arrive as an object with a `message` array.
       if (
         this.isHttpExceptionResponseBody(exceptionResponse) &&
         'message' in exceptionResponse &&
         Array.isArray(exceptionResponse.message)
       ) {
-        const validationDetails = this.parseClassValidatorErrors(
+        const validationDetails = this.parseZodErrors(
           exceptionResponse.message,
         );
         return {
@@ -200,26 +200,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   /**
-   * Convert an array of class-validator error strings into structured
+   * Convert an array of Zod validation error strings into structured
    * ValidationFieldError objects.
    *
-   * class-validator messages typically look like:
-   *   "walletAddress must be a string"
-   *   "email must be an email"
+   * ZodValidationPipe formats errors as:
+   *   "field: error message"
    */
-  private parseClassValidatorErrors(
+  private parseZodErrors(
     messages: string[],
   ): ValidationFieldError[] {
     const fieldMap = new Map<string, string[]>();
 
     for (const msg of messages) {
-      // Best-effort: split on first space — everything before is the field name.
-      const spaceIdx = msg.indexOf(' ');
-      const field = spaceIdx > -1 ? msg.substring(0, spaceIdx) : 'unknown';
-      const constraint = msg;
-
-      if (!fieldMap.has(field)) fieldMap.set(field, []);
-      fieldMap.get(field)!.push(constraint);
+      // Zod-formatted error (field: message)
+      const colonIdx = msg.indexOf(': ');
+      if (colonIdx > -1) {
+        const field = msg.substring(0, colonIdx);
+        const constraint = msg.substring(colonIdx + 2);
+        if (!fieldMap.has(field)) fieldMap.set(field, []);
+        fieldMap.get(field)!.push(constraint);
+      } else {
+        // Fallback: split on first space
+        const spaceIdx = msg.indexOf(' ');
+        const field = spaceIdx > -1 ? msg.substring(0, spaceIdx) : 'unknown';
+        const constraint = msg;
+        if (!fieldMap.has(field)) fieldMap.set(field, []);
+        fieldMap.get(field)!.push(constraint);
+      }
     }
 
     return Array.from(fieldMap.entries()).map(([field, constraints]) => ({

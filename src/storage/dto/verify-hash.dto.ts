@@ -1,13 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { z } from 'zod';
 
-export class VerifyHashDto {
-  @ApiProperty({ description: 'Alphanumeric hash value to verify', minLength: 1, maxLength: 128, example: 'Qm4f5G3f3u' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(128)
-  @Matches(/^[a-zA-Z0-9]+$/, {
+export const verifyHashSchema = z.object({
+  hash: z.string().min(1).max(128).regex(/^[a-zA-Z0-9]+$/, {
     message: 'Hash must be alphanumeric',
-  })
-  hash!: string;
-}
+  }),
+});
+
+export type VerifyHashDto = z.infer<typeof verifyHashSchema>;

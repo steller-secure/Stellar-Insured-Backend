@@ -17,15 +17,7 @@
         "watchAssets": true
       }
     ],
-    "plugins": [
-      {
-        "name": "@nestjs/swagger",
-        "options": {
-          "classValidatorShim": false,
-          "introspectComments": true
-        }
-      }
-    ]
+    "plugins": []
   },
   "generateOptions": {
     "spec": true,

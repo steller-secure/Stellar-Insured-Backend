@@ -20,13 +20,14 @@ import {
 } from '@nestjs/swagger';
 import { PrismaService } from '../prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
-import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
-import { PushSubscriptionDto } from './dto/push-subscription.dto';
+import { UpdateNotificationSettingsDto, updateNotificationSettingsSchema } from './dto/update-notification-settings.dto';
+import { PushSubscriptionDto, pushSubscriptionSchema } from './dto/push-subscription.dto';
 import { NotificationService } from './services/notification.service';
-import { CreateNotificationDto } from './dto/create-notification.dto';
+import { CreateNotificationDto, createNotificationSchema } from './dto/create-notification.dto';
 import { AuditService } from '../insurance/services/audit.service';
 import { AuditAction } from '../insurance/enums/audit-action.enum';
 import { Prisma } from 'node_modules/@prisma/client/default';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -47,9 +48,8 @@ export class NotificationController {
         summary:
             'Queue a notification for delivery (email + web push) via background jobs',
     })
-    @ApiBody({ type: CreateNotificationDto })
     @ApiOkResponse({ description: 'Notification accepted and queued for delivery' })
-    async notify(@Body() dto: CreateNotificationDto) {
+    async notify(@Body(new ZodValidationPipe(createNotificationSchema)) dto: CreateNotificationDto) {
         // Enqueue and return 202 immediately. The actual SendGrid / web-push
         // call happens off-request in the queue worker, so a slow or failing
         // provider can never block or 500 this endpoint.
@@ -85,11 +85,10 @@ export class NotificationController {
     @Put('settings/:userId')
     @ApiOperation({ summary: 'Update notification preferences for a user' })
     @ApiParam({ name: 'userId', type: String, description: 'ID of the user' })
-    @ApiBody({ type: UpdateNotificationSettingsDto })
     @ApiOkResponse({ description: 'Updated notification settings' })
     async updateSettings(
         @Param('userId') userId: string,
-        @Body() settings: UpdateNotificationSettingsDto,
+        @Body(new ZodValidationPipe(updateNotificationSettingsSchema)) settings: UpdateNotificationSettingsDto,
     ) {
         await this.ensureActiveUser(userId);
 
@@ -112,11 +111,10 @@ export class NotificationController {
     @Post('subscribe/:userId')
     @ApiOperation({ summary: 'Subscribe a user to push notifications' })
     @ApiParam({ name: 'userId', type: String, description: 'ID of the subscribing user' })
-    @ApiBody({ type: PushSubscriptionDto })
     @ApiOkResponse({ description: 'Subscription created successfully' })
     async subscribeToPush(
         @Param('userId') userId: string,
-        @Body() subscription: PushSubscriptionDto,
+        @Body(new ZodValidationPipe(pushSubscriptionSchema)) subscription: PushSubscriptionDto,
     ) {
         // Validate subscription structure
         if (!subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
