@@ -1,63 +1,23 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsEmail,
-  IsOptional,
-  IsObject,
-  IsString,
-  MaxLength,
-  ValidateNested,
-} from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { z } from 'zod';
 import { sanitizeString, sanitizeObject } from '../../common/utils/sanitization.util';
 
 /**
  * Allowed profile data shape – restricts keys to known safe fields
  * and prevents arbitrary nested objects.
  */
-export class ProfileDataDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
-  displayName?: string;
+export const profileDataSchema = z.object({
+  displayName: z.string().max(200).optional().transform(sanitizeString),
+  bio: z.string().max(500).optional().transform(sanitizeString),
+  avatarUrl: z.string().max(500).optional().transform(sanitizeString),
+});
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
-  bio?: string;
+export type ProfileDataDto = z.infer<typeof profileDataSchema>;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
-  avatarUrl?: string;
-}
+export const updateUserSchema = z.object({
+  email: z.string().email().max(254).optional().transform(sanitizeString),
+  profileData: profileDataSchema.optional(),
+  pushSubscription: z.string().max(5000).optional().transform(sanitizeString),
+});
 
-export class UpdateUserDto {
-  @ApiPropertyOptional({ description: 'User email address' })
-  @IsEmail()
-  @IsOptional()
-  @MaxLength(254)
-  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
-  email?: string;
-
-  @ApiPropertyOptional({
-    description: 'User profile data (displayName, bio, avatarUrl)',
-    type: Object,
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ProfileDataDto)
-  profileData?: ProfileDataDto;
-
-  @ApiPropertyOptional({ description: 'Encrypted push subscription payload' })
-  @IsString()
-  @IsOptional()
-  @MaxLength(5000)
-  @Transform(({ value }) => {
-    if (typeof value !== 'string') return value;
-    return sanitizeString(value);
-  })
-  pushSubscription?: string;
-}
+export type UpdateUserDto = z.infer<typeof updateUserSchema>;

@@ -1,13 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsObject, IsOptional, IsString } from 'class-validator';
+import { z } from 'zod';
 
-export class PinMetadataDto {
-  @ApiProperty({ description: 'Arbitrary metadata to pin', type: Object })
-  @IsObject()
-  metadata!: Record<string, any>;
+export const pinMetadataSchema = z.object({
+  metadata: z.any(),
+  name: z.string().optional(),
+});
 
-  @ApiPropertyOptional({ description: 'Optional friendly name for the metadata' })
-  @IsOptional()
-  @IsString()
-  name?: string;
-}
+export type PinMetadataDto = z.infer<typeof pinMetadataSchema>;

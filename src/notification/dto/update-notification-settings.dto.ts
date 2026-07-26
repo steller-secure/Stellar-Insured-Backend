@@ -1,29 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { z } from 'zod';
 
-export class UpdateNotificationSettingsDto {
-  @ApiPropertyOptional({ description: 'Enable email notifications' })
-  @IsOptional()
-  @IsBoolean()
-  emailEnabled?: boolean;
+export const updateNotificationSettingsSchema = z.object({
+  emailEnabled: z.boolean().optional(),
+  pushEnabled: z.boolean().optional(),
+  notifyContributions: z.boolean().optional(),
+  notifyMilestones: z.boolean().optional(),
+  notifyDeadlines: z.boolean().optional(),
+});
 
-  @ApiPropertyOptional({ description: 'Enable push notifications' })
-  @IsOptional()
-  @IsBoolean()
-  pushEnabled?: boolean;
-
-  @ApiPropertyOptional({ description: 'Notify on new contributions' })
-  @IsOptional()
-  @IsBoolean()
-  notifyContributions?: boolean;
-
-  @ApiPropertyOptional({ description: 'Notify on milestone changes' })
-  @IsOptional()
-  @IsBoolean()
-  notifyMilestones?: boolean;
-
-  @ApiPropertyOptional({ description: 'Notify on approaching deadlines' })
-  @IsOptional()
-  @IsBoolean()
-  notifyDeadlines?: boolean;
-}
+export type UpdateNotificationSettingsDto = z.infer<typeof updateNotificationSettingsSchema>;

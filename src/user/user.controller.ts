@@ -20,11 +20,12 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
-import { UserParamsDto } from './dto/user-params.dto';
-import { WalletAddressDto } from './dto/wallet-address.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UserParamsDto, userParamsSchema } from './dto/user-params.dto';
+import { WalletAddressDto, walletAddressSchema } from './dto/wallet-address.dto';
+import { UpdateUserDto, updateUserSchema } from './dto/update-user.dto';
 import { sanitizeObject } from '../common/utils/sanitization.util';
 import { SerializationTransformer } from '../common/utils/serialization.util';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -51,7 +52,7 @@ export class UserController {
   @ApiOperation({ summary: 'Retrieve a user by ID' })
   @ApiParam({ name: 'id', type: String, description: 'User ID' })
   @ApiOkResponse({ description: 'User data for the requested ID' })
-  async getUser(@Param() params: UserParamsDto) {
+  async getUser(@Param(new ZodValidationPipe(userParamsSchema)) params: UserParamsDto) {
     const user = await this.userService.findById(params.id);
     return this.mapUserResponse(user);
   }
@@ -61,7 +62,7 @@ export class UserController {
   @ApiOperation({ summary: 'Retrieve a user by wallet address' })
   @ApiParam({ name: 'address', type: String, description: 'Wallet address to search by' })
   @ApiOkResponse({ description: 'User data associated with the wallet address' })
-  async getUserByWallet(@Param() params: WalletAddressDto) {
+  async getUserByWallet(@Param(new ZodValidationPipe(walletAddressSchema)) params: WalletAddressDto) {
     const user = await this.userService.findByWallet(params.address);
     return this.mapUserResponse(user);
   }
@@ -70,11 +71,10 @@ export class UserController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user profile' })
   @ApiParam({ name: 'id', type: String, description: 'ID of the user to update' })
-  @ApiBody({ type: UpdateUserDto })
   @ApiOkResponse({ description: 'Updated user data' })
   async updateUser(
-    @Param() params: UserParamsDto,
-    @Body() updateData: UpdateUserDto,
+    @Param(new ZodValidationPipe(userParamsSchema)) params: UserParamsDto,
+    @Body(new ZodValidationPipe(updateUserSchema)) updateData: UpdateUserDto,
   ) {
     const user = await this.userService.update(params.id, updateData);
     return this.mapUserResponse(user);
@@ -85,7 +85,7 @@ export class UserController {
   @ApiOperation({ summary: 'Soft delete a user' })
   @ApiParam({ name: 'id', type: String, description: 'ID of the user to delete' })
   @ApiOkResponse({ description: 'Deletion result' })
-  async deleteUser(@Param() params: UserParamsDto) {
+  async deleteUser(@Param(new ZodValidationPipe(userParamsSchema)) params: UserParamsDto) {
     const result = await this.userService.delete(params.id);
     return {
       success: true,

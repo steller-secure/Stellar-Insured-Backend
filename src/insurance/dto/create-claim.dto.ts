@@ -1,17 +1,15 @@
-import { IsString, IsUUID } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 
-export class CreateClaimDto {
-  @IsUUID()
-  policyId!: string;
-
-  @Transform(({ value }) => {
+export const createClaimSchema = z.object({
+  policyId: z.string().uuid(),
+  claimAmount: z.string().transform((value) => {
     const decimal = new Prisma.Decimal(value);
     if (decimal.lte(new Prisma.Decimal(0))) {
       throw new Error('Claim amount must be positive');
     }
     return decimal;
-  })
-  claimAmount!: Prisma.Decimal;
-}
+  }),
+});
+
+export type CreateClaimDto = z.infer<typeof createClaimSchema>;

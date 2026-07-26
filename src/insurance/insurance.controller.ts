@@ -3,11 +3,12 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { InsuranceService } from './insurance.service';
 import { ClaimService } from './claim.service';
 import { ReinsuranceService } from './reinsurance.service';
-import { PurchasePolicyDto } from './dto/purchase-policy.dto';
-import { CreateReinsuranceDto } from './dto/create-reinsurance.dto';
+import { PurchasePolicyDto, purchasePolicySchema } from './dto/purchase-policy.dto';
+import { CreateReinsuranceDto, createReinsuranceSchema } from './dto/create-reinsurance.dto';
 import { IdempotencyInterceptor } from '../interceptors/idempotency.interceptor';
 import { SerializationTransformer } from '../common/utils/serialization.util';
 import { InsurancePolicyDto } from '../common/dto/insurance.dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @SkipThrottle({ auth: true })
 @Controller({ path: 'insurance', version: '1' })
@@ -21,7 +22,7 @@ export class InsuranceController {
   @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 purchases per hour
   @Post('purchase')
   @UseInterceptors(IdempotencyInterceptor)
-  async purchase(@Body() body: PurchasePolicyDto) {
+  async purchase(@Body(new ZodValidationPipe(purchasePolicySchema)) body: PurchasePolicyDto) {
     const policy = await this.insurance.purchasePolicy(body.userId, body.poolId, body.riskType, body.coverageAmount);
     return SerializationTransformer.transform(policy);
   }
@@ -48,7 +49,7 @@ export class InsuranceController {
   @Post('reinsurance')
   @Throttle({ admin: { limit: 20, ttl: 60000 } }) // 20 contracts per minute for admins
   @UseInterceptors(IdempotencyInterceptor)
-  async createReinsurance(@Body() body: CreateReinsuranceDto) {
+  async createReinsurance(@Body(new ZodValidationPipe(createReinsuranceSchema)) body: CreateReinsuranceDto) {
     const contract = await this.reinsurance.createContract(body.poolId, body.coverageLimit, body.premiumRate);
     return SerializationTransformer.transform(contract);
   }

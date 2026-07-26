@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { xdr, scValToNative, Address } from 'stellar-sdk';
+import { xdr, scValToNative, Address } from '@stellar/stellar-sdk';
 import { ContractEventType } from '../types/event-types';
 
 /**
