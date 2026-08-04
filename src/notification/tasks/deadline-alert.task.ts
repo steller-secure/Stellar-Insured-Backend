@@ -1,19 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaService } from '../../prisma.service';
 import { NotificationService } from '../services/notification.service';
 import { NotificationType } from '../enums/notification-type.enum';
+import {
+  ProjectRepository,
+  ContributionRepository,
+  NotificationRepository,
+} from '../../common/repositories';
 
 @Injectable()
 export class DeadlineAlertTask {
   private readonly logger = new Logger(DeadlineAlertTask.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly projectRepository: ProjectRepository,
+    private readonly contributionRepository: ContributionRepository,
+    private readonly notificationRepository: NotificationRepository,
     private readonly notificationService: NotificationService,
   ) {}
 
-  // Run every hour
   @Cron(CronExpression.EVERY_HOUR)
   async handleCron() {
     this.logger.debug('Checking for projects nearing their deadline...');
@@ -23,13 +28,10 @@ export class DeadlineAlertTask {
       now.getTime() + 24 * 60 * 60 * 1000,
     );
 
-    const projects = await this.prisma.project.findMany({
+    const projects = await this.projectRepository.findMany({
       where: {
         status: 'ACTIVE',
-        deadline: {
-          gt: now,
-          lte: twentyFourHoursFromNow,
-        },
+        deadline: { gt: now, lte: twentyFourHoursFromNow },
       },
       include: {
         contributions: {
@@ -37,30 +39,27 @@ export class DeadlineAlertTask {
           distinct: ['investorId'],
         },
       },
-    });
+    }) as any[];
 
     for (const project of projects) {
-      const existingAlert = await this.prisma.notification.findFirst({
-        where: {
-          type: NotificationType.DEADLINE,
-          title: `24 Hours Left: ${project.title}`,
-        },
+      const alertTitle = `24 Hours Left: ${project.title}`;
+      const existingAlerts = await this.notificationRepository.findMany({
+        where: { type: NotificationType.DEADLINE, title: alertTitle },
+        take: 1,
       });
 
-      if (existingAlert) {
-        continue;
-      }
+      if (existingAlerts.length > 0) continue;
 
       this.logger.log(
         `Project ${project.id} is ending in < 24 hours. Notifying contributors.`,
       );
 
-      for (const contribution of project.contributions) {
+      for (const contribution of project.contributions ?? []) {
         try {
           await this.notificationService.notify(
             contribution.investorId,
             NotificationType.DEADLINE,
-            `24 Hours Left: ${project.title}`,
+            alertTitle,
             `Only 24 hours left for project ${project.title} to reach its goal.`,
             { projectId: project.id },
           );

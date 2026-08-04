@@ -13,10 +13,9 @@ import appConfig from './config/app.config';
 import notificationConfig from './config/notification.config';
 import storageConfig from './config/storage.config';
 
-import { DomainEventBusModule } from './common/events/domain-event-bus.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { NonceModule } from './nonce/nonce.module';
+import { NonceModule } from './nonce/nonce.module';         // ← NEW
 import { ReputationModule } from './reputation/reputation.module';
 import { DatabaseModule } from './database.module';
 import { IndexerModule } from './indexer/indexer.module';
@@ -30,8 +29,10 @@ import { AppThrottlerGuard } from './auth/guards/app-throttler.guard';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { PrismaHealthIndicator } from './common/health/prisma.health';
 
+// ← NEW: global exception filter for standardised error responses
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseTransformInterceptor } from './common/interceptors/response.interceptor';
+import { IdempotencyCleanupTask } from './interceptors/tasks/idempotency-cleanup.task';
 
 @Module({
   imports: [
@@ -64,10 +65,10 @@ import { ResponseTransformInterceptor } from './common/interceptors/response.int
     TerminusModule,
     HttpModule,
 
-    DomainEventBusModule,
+    // Feature modules
     AuthModule,
     UserModule,
-    NonceModule,
+    NonceModule,           // ← NEW: nonce replay-prevention now wired in
     ReputationModule,
     DatabaseModule,
     IndexerModule,
@@ -81,14 +82,24 @@ import { ResponseTransformInterceptor } from './common/interceptors/response.int
     AppService,
     PrismaHealthIndicator,
 
+    // Global rate limiting — ThrottlerModule config is inert without this guard.
+    // Registered before JwtAuthGuard so excess traffic is rejected cheaply.
     {
       provide: APP_GUARD,
       useClass: AppThrottlerGuard,
     },
+
+    // Global JWT guard — decorators like @Public() opt routes out.
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+
+    // Idempotency cleanup task - removes stale keys daily
+    IdempotencyCleanupTask,
+    
+    // Global exception filter — all thrown exceptions return ErrorResponseDto.
+    // This replaces the four inconsistent error formats previously in the codebase.
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
@@ -100,6 +111,10 @@ import { ResponseTransformInterceptor } from './common/interceptors/response.int
   ],
 })
 export class AppModule implements NestModule {
+  // Also applied directly via app.use() in main.ts, ahead of expressWinston's
+  // request logger, so production request logs are covered too. Kept here as
+  // well so any TestingModule built directly from AppModule (bypassing
+  // main.ts's bootstrap) still gets a tracing scope for its requests.
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(CorrelationIdMiddleware).forRoutes('*');
   }

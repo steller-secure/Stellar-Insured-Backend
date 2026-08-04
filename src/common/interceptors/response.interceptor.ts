@@ -8,6 +8,11 @@ import {
 import { Observable, map, catchError } from 'rxjs';
 import { jsonReplacer } from '../utils/json-replacer.util';
 import { SerializationTransformer } from '../utils/serialization.util';
+import {
+  extractEntityIdFromParams,
+  getTracingContext,
+  updateTracingContext,
+} from '../tracing/tracing-context';
 
 export interface SuccessResponse<T = unknown> {
   success: true;
@@ -15,14 +20,21 @@ export interface SuccessResponse<T = unknown> {
   meta?: unknown;
 }
 
+interface RequestWithUser {
+  user?: { id?: string };
+  params?: Record<string, string>;
+}
+
 @Injectable()
 export class ResponseTransformInterceptor implements NestInterceptor {
   private readonly logger = new Logger(ResponseTransformInterceptor.name);
 
   intercept(
-    _context: ExecutionContext,
+    context: ExecutionContext,
     next: CallHandler,
   ): Observable<SuccessResponse<unknown> | unknown> {
+    this.captureTraceContext(context);
+
     return next.handle().pipe(
       map(body => this.formatResponse(body)),
       catchError(error => {
@@ -33,6 +45,40 @@ export class ResponseTransformInterceptor implements NestInterceptor {
         throw error;
       }),
     );
+  }
+
+  /**
+   * Runs after guards (so `request.user` is already populated by
+   * JwtAuthGuard/passport) and before the route handler. Fills in `userId`
+   * and a best-effort `entityId` on the current tracing scope, and mirrors
+   * the correlation ID onto the response so callers can quote it back when
+   * reporting an issue. Non-invasive by design — no controller/service
+   * needs to know this is happening.
+   */
+  private captureTraceContext(context: ExecutionContext): void {
+    if (!context || typeof context.switchToHttp !== 'function') return;
+
+    const http = context.switchToHttp();
+    const request = http.getRequest?.() as RequestWithUser | undefined;
+    if (!request) return;
+
+    if (request.user?.id) {
+      updateTracingContext({ userId: request.user.id });
+    }
+
+    const entityId = extractEntityIdFromParams(request.params);
+    if (entityId) {
+      updateTracingContext({ entityId });
+    }
+
+    const response = http.getResponse?.();
+    const ctx = getTracingContext();
+    if (response && typeof response.setHeader === 'function' && ctx) {
+      response.setHeader('x-correlation-id', ctx.correlationId);
+      if (ctx.entityId) {
+        response.setHeader('x-entity-id', ctx.entityId);
+      }
+    }
   }
 
   private formatResponse(body: unknown): unknown {

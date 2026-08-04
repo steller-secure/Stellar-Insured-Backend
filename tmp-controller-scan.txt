@@ -1,0 +1,838 @@
+--- src/user/user.controller.ts ---
+import {
+  Controller,
+  Get,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  Query,
+  DefaultValuePipe,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiOkResponse,
+  ApiBearerAuth,
+  ApiQuery,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
+import { UserService } from './user.service';
+import { UserParamsDto } from './dto/user-params.dto';
+import { WalletAddressDto } from './dto/wallet-address.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { sanitizeObject } from '../common/utils/sanitization.util';
+import { User } from '@prisma/client';
+
+@ApiTags('Users')
+@ApiBearerAuth()
+@SkipThrottle({ auth: true })
+@Controller({ path: 'user', version: '1' })
+export class UserController {
+  constructor(private readonly userService: UserService) {}
+
+  @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 users list requests per minute
+  @Get()
+  @ApiOperation({ summary: 'List users with pagination' })
+  @ApiOkResponse({ description: 'A paginated collection of users' })
+  @ApiQuery({ name: 'page', type: Number, required: false, description: 'Page number' })
+  @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of users per page' })
+  async getUsers(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit = 20,
+  ) {
+    return this.userService.findPaginated(page, limit);
+  }
+
+  @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 user lookups per minute
+  @Get(':id')
+  @ApiOperation({ summary: 'Retrieve a user by ID' })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
+  @ApiOkResponse({ description: 'User data for the requested ID' })
+  async getUser(@Param() params: UserParamsDto) {
+    const user = await this.userService.findById(params.id);
+    return this.mapUserResponse(user);
+  }
+
+  @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 wallet lookups per minute
+  @Get('wallet/:address')
+  @ApiOperation({ summary: 'Retrieve a user by wallet address' })
+  @ApiParam({ name: 'address', type: String, description: 'Wallet address to search by' })
+  @ApiOkResponse({ description: 'User data associated with the wallet address' })
+  async getUserByWallet(@Param() params: WalletAddressDto) {
+    const user = await this.userService.findByWallet(params.address);
+    return this.mapUserResponse(user);
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 3600000 } }) // 20 updates per hour per user
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a user profile' })
+  @ApiParam({ name: 'id', type: String, description: 'ID of the user to update' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiOkResponse({ description: 'Updated user data' })
+  async updateUser(
+    @Param() params: UserParamsDto,
+    @Body() updateData: UpdateUserDto,
+  ) {
+    const user = await this.userService.update(params.id, updateData);
+    return this.mapUserResponse(user);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 deletions per hour per user
+  @Delete(':id')
+  @ApiOperation({ summary: 'Soft delete a user' })
+  @ApiParam({ name: 'id', type: String, description: 'ID of the user to delete' })
+  @ApiOkResponse({ description: 'Deletion result' })
+  async deleteUser(@Param() params: UserParamsDto) {
+    const result = await this.userService.delete(params.id);
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  private mapUserResponse(user: User) {
+    return {
+      id: user.id,
+      walletAddress: user.walletAddress,
+      reputationScore: user.reputationScore,
+      trustScore: user.trustScore,
+      email: user.email,
+      profileData: user.profileData ? sanitizeObject(user.profileData) : null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+}
+
+--- src/notification/notification.controller.ts ---
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Post,
+    Put,
+    HttpCode,
+    BadRequestException,
+    NotFoundException,
+} from '@nestjs/common';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+  ApiOkResponse,
+} from '@nestjs/swagger';
+import { PrismaService } from '../prisma.service';
+import { EncryptionService } from '../encryption/encryption.service';
+import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
+import { PushSubscriptionDto } from './dto/push-subscription.dto';
+import { NotificationService } from './services/notification.service';
+import { CreateNotificationDto } from './dto/create-notification.dto';
+import { Prisma } from 'node_modules/@prisma/client/default';
+
+@ApiTags('Notifications')
+@ApiBearerAuth()
+@SkipThrottle({ auth: true })
+@Controller({ path: 'notifications', version: '1' })
+export class NotificationController {
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly encryption: EncryptionService,
+        private readonly notificationService: NotificationService,
+    ) { }
+
+    @Throttle({ default: { limit: 10, ttl: 60000 } })
+    @Post('notify')
+    @HttpCode(202)
+    @ApiOperation({
+        summary:
+            'Queue a notification for delivery (email + web push) via background jobs',
+    })
+    @ApiBody({ type: CreateNotificationDto })
+    @ApiOkResponse({ description: 'Notification accepted and queued for delivery' })
+    async notify(@Body() dto: CreateNotificationDto) {
+        // Enqueue and return 202 immediately. The actual SendGrid / web-push
+        // call happens off-request in the queue worker, so a slow or failing
+        // provider can never block or 500 this endpoint.
+        await this.notificationService.notify(
+            dto.userId,
+            dto.type,
+            dto.title,
+            dto.message,
+            dto.data as Prisma.InputJsonValue | undefined,
+        );
+        return { accepted: true };
+    }
+
+    @Throttle({ default: {} })
+    @Get('settings/:userId')
+    @ApiOperation({ summary: 'Fetch notification settings for a user' })
+    @ApiParam({ name: 'userId', type: String, description: 'ID of the user' })
+    @ApiOkResponse({ description: 'Notification settings for the user' })
+    async getSettings(@Param('userId') userId: string) {
+        await this.ensureActiveUser(userId);
+
+        return this.prisma.notificationSetting.upsert({
+            where: { userId },
+            // upsert bypasses the soft-delete middleware, so restore the row
+            // explicitly: an active user must always see usable settings even
+            // if they were previously soft-deleted (e.g. restored account).
+            update: { deletedAt: null },
+            create: { userId },
+        });
+    }
+
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
+    @Put('settings/:userId')
+    @ApiOperation({ summary: 'Update notification preferences for a user' })
+    @ApiParam({ name: 'userId', type: String, description: 'ID of the user' })
+    @ApiBody({ type: UpdateNotificationSettingsDto })
+    @ApiOkResponse({ description: 'Updated notification settings' })
+    async updateSettings(
+        @Param('userId') userId: string,
+        @Body() settings: UpdateNotificationSettingsDto,
+    ) {
+        await this.ensureActiveUser(userId);
+
+        return this.prisma.notificationSetting.upsert({
+            where: { userId },
+            update: { ...settings, deletedAt: null },
+            create: {
+                userId,
+                ...settings,
+            },
+        });
+    }
+
+    @Throttle({ default: { limit: 3, ttl: 60000 } })
+    @Post('subscribe/:userId')
+    @ApiOperation({ summary: 'Subscribe a user to push notifications' })
+    @ApiParam({ name: 'userId', type: String, description: 'ID of the subscribing user' })
+    @ApiBody({ type: PushSubscriptionDto })
+    @ApiOkResponse({ description: 'Subscription created successfully' })
+    async subscribeToPush(
+        @Param('userId') userId: string,
+        @Body() subscription: PushSubscriptionDto,
+    ) {
+        // Validate subscription structure
+        if (!subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+            throw new BadRequestException('Invalid push subscription format');
+        }
+
+        // Additional validation for endpoint URL
+        try {
+            new URL(subscription.endpoint);
+        } catch {
+            throw new BadRequestException('Invalid endpoint URL');
+        }
+
+        // Validate key formats (base64)
+        try {
+            const p256dh = Buffer.from(subscription.keys.p256dh, 'base64');
+            const auth = Buffer.from(subscription.keys.auth, 'base64');
+            
+            if (p256dh.length === 0 || auth.length === 0) {
+                throw new BadRequestException('Invalid key format');
+            }
+        } catch {
+            throw new BadRequestException('Invalid key encoding');
+        }
+
+        await this.ensureActiveUser(userId);
+
+        // Encrypt push subscription before storing
+        const encryptedSubscription = this.encryption.encrypt(JSON.stringify(subscription));
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { pushSubscription: encryptedSubscription },
+        });
+        return { success: true };
+    }
+
+    /**
+     * Rejects requests targeting missing or soft-deleted users with a 404
+     * instead of silently operating on (or resurrecting) their records.
+     */
+    private async ensureActiveUser(userId: string): Promise<void> {
+        const user = await this.prisma.user.findFirst({
+            where: { id: userId, deletedAt: null },
+            select: { id: true },
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User with ID ${userId} not found`);
+        }
+    }
+}
+
+--- src/storage/storage.controller.ts ---
+import { Controller, Post, Body, Delete, Param, UseInterceptors, UploadedFile, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiParam,
+} from '@nestjs/swagger';
+import { StorageService } from './storage.service';
+import { PinMetadataDto } from './dto/pin-metadata.dto';
+import { OptimizeImageDto } from './dto/optimize-image.dto';
+import { VerifyHashDto } from './dto/verify-hash.dto';
+import { UploadFileDto } from './dto/upload-file.dto';
+import { PresignUrlDto } from './dto/presign-url.dto';
+
+@ApiTags('Storage')
+@ApiBearerAuth()
+@SkipThrottle({ auth: true })
+@Controller({ path: 'storage', version: '1' })
+export class StorageController {
+  constructor(private readonly storageService: StorageService) {}
+
+  @Throttle({ default: { limit: 20, ttl: 3600000 } }) // 20 metadata pins per hour
+  @Post('metadata')
+  @ApiOperation({ summary: 'Pin project metadata to storage' })
+  @ApiBody({ type: PinMetadataDto })
+  @ApiCreatedResponse({ description: 'Returns the new metadata CID' })
+  async pinProjectMetadata(@Body() dto: PinMetadataDto): Promise<string> {
+    return this.storageService.pinProjectMetadata(dto.metadata);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 banner uploads per hour
+  @Post('banner')
+  @ApiOperation({ summary: 'Optimize and upload a banner image' })
+  @ApiBody({ type: OptimizeImageDto })
+  @ApiCreatedResponse({ description: 'Returns the uploaded banner CID' })
+  async optimizeAndUploadBanner(@Body() dto: OptimizeImageDto): Promise<string> {
+    const optimizedImage = await this.storageService.optimizeImage(
+      dto.imagePath,
+      dto.width,
+      dto.height,
+    );
+    const cid = await this.storageService.pinProjectMetadata({
+      image: optimizedImage.toString('base64'),
+    });
+    return cid;
+  }
+
+  @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 hash verifications per minute
+  @Post('verify-hash')
+  @ApiOperation({ summary: 'Verify an IPFS hash using standardized validation' })
+  @ApiBody({ type: VerifyHashDto })
+  @ApiOkResponse({ description: 'Returns whether the hash is valid' })
+  async verifyIPFSHash(@Body() dto: VerifyHashDto): Promise<boolean> {
+    return this.storageService.verifyIPFSHash(dto.hash);
+  }
+
+  // ──────────────────── S3 endpoints ────────────────────
+
+  @Throttle({ default: { limit: 30, ttl: 3600000 } }) // 30 uploads per hour
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload a file to S3' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary', description: 'File to upload' },
+        prefix: { type: 'string', description: 'Optional folder prefix', example: 'uploads' },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiCreatedResponse({ description: 'Returns the S3 key and public URL' })
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('prefix') prefix?: string,
+  ): Promise<{ key: string; url: string }> {
+    return this.storageService.uploadFile(file, prefix);
+  }
+
+  @Throttle({ default: { limit: 60, ttl: 60000 } }) // 60 presign requests per minute
+  @Post('presign')
+  @ApiOperation({ summary: 'Generate a presigned GET URL for an S3 object' })
+  @ApiBody({ type: PresignUrlDto })
+  @ApiOkResponse({ description: 'Returns the presigned URL' })
+  async getPresignedUrl(@Body() dto: PresignUrlDto): Promise<{ url: string }> {
+    const url = await this.storageService.getPresignedUrl(dto.key, dto.expiresIn);
+    return { url };
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 3600000 } }) // 20 deletes per hour
+  @Delete(':key')
+  @ApiOperation({ summary: 'Delete an object from S3' })
+  @ApiParam({ name: 'key', description: 'S3 object key' })
+  @ApiOkResponse({ description: 'Object deleted successfully' })
+  async deleteObject(@Param('key') key: string): Promise<{ deleted: boolean }> {
+    await this.storageService.deleteObject(key);
+    return { deleted: true };
+  }
+}
+
+--- src/nonce/nonce.controller.ts ---
+import { Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiCreatedResponse } from '@nestjs/swagger';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { NonceService } from './nonce.service';
+import { Public } from '../auth/decorators/public.decorator';
+
+/**
+ * NonceController
+ *
+ * Exposes a single public endpoint that clients call to obtain a fresh nonce
+ * before performing sensitive operations (e.g. wallet-signed authentication).
+ *
+ * POST /nonce  →  { nonce: string, expiresInMs: number }
+ *
+ * The nonce is stored in Redis with a 5-minute TTL and consumed (deleted) by
+ * NonceService.consumeNonce() inside the relevant auth guard / strategy.
+ */
+@ApiTags('Nonce')
+@SkipThrottle({ default: true })
+@Throttle({ auth: {} })
+@Controller({ path: 'nonce', version: '1' })
+export class NonceController {
+  constructor(private readonly nonceService: NonceService) {}
+
+  /**
+   * Issue a new one-time nonce.
+   * Marked @Public() so it is reachable without a JWT.
+   * Rate-limited by the named `auth` throttler (THROTTLE_AUTH_*).
+   */
+  @Public()
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Issue a one-time authentication nonce' })
+  @ApiCreatedResponse({
+    description: 'Returns a new nonce and expiration in milliseconds',
+    schema: {
+      example: {
+        nonce: 'abc123',
+        expiresInMs: 300000,
+      },
+    },
+  })
+  async issueNonce(): Promise<{ nonce: string; expiresInMs: number }> {
+    const nonce = await this.nonceService.generateNonce();
+    return {
+      nonce,
+      expiresInMs: 5 * 60 * 1000, // must match NONCE_TTL_MS in NonceService
+    };
+  }
+}
+
+--- src/insurance/insurance.controller.ts ---
+import { Controller, Post, Param, Body, UseInterceptors } from '@nestjs/common';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { InsuranceService } from './insurance.service';
+import { ClaimService } from './claim.service';
+import { ReinsuranceService } from './reinsurance.service';
+import { PurchasePolicyDto } from './dto/purchase-policy.dto';
+import { CreateReinsuranceDto } from './dto/create-reinsurance.dto';
+import { IdempotencyInterceptor } from '../interceptors/idempotency.interceptor';
+
+@SkipThrottle({ auth: true })
+@Controller({ path: 'insurance', version: '1' })
+export class InsuranceController {
+  constructor(
+    private readonly insurance: InsuranceService,
+    private readonly claims: ClaimService,
+    private readonly reinsurance: ReinsuranceService,
+  ) {}
+
+  @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 purchases per hour
+  @Post('purchase')
+  @UseInterceptors(IdempotencyInterceptor)
+  async purchase(@Body() body: PurchasePolicyDto) {
+    return this.insurance.purchasePolicy(body.userId, body.poolId, body.riskType, body.coverageAmount);
+  }
+
+  @Throttle({ default: { limit: 50, ttl: 3600000 } }) // 50 claim assessments per hour
+  @Post('claims/:claimId/assess')
+  @Throttle({ admin: { limit: 100, ttl: 60000 } }) // 100 assessments per minute for admins
+  @UseInterceptors(IdempotencyInterceptor)
+  async assessClaim(@Param('claimId') claimId: string) {
+    return this.claims.assessClaim(claimId);
+  }
+
+  @Throttle({ default: { limit: 30, ttl: 3600000 } }) // 30 claim payments per hour
+  @Post('claims/:claimId/pay')
+  @Throttle({ admin: { limit: 50, ttl: 60000 } }) // 50 payouts per minute for admins
+  @UseInterceptors(IdempotencyInterceptor)
+  async payClaim(@Param('claimId') claimId: string) {
+    return this.claims.payClaim(claimId);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 3600000 } }) // 5 reinsurance contracts per hour
+  @Post('reinsurance')
+  @Throttle({ admin: { limit: 20, ttl: 60000 } }) // 20 contracts per minute for admins
+  @UseInterceptors(IdempotencyInterceptor)
+  async createReinsurance(@Body() body: CreateReinsuranceDto) {
+    return this.reinsurance.createContract(body.poolId, body.coverageLimit, body.premiumRate);
+  }
+}
+
+--- src/user/dto/user-params.dto.ts ---
+import { IsString, IsNotEmpty, MaxLength, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { sanitizeString, isValidCuid } from '../../common/utils/sanitization.util';
+
+export class UserParamsDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value;
+    const sanitized = sanitizeString(value);
+    return sanitized;
+  })
+  @Matches(/^[a-zA-Z0-9]+$/, {
+    message: 'id must be alphanumeric (CUID format)',
+  })
+  id: string;
+}
+
+--- src/user/dto/wallet-address.dto.ts ---
+import { IsString, IsNotEmpty, MaxLength, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { sanitizeString } from '../../common/utils/sanitization.util';
+
+export class WalletAddressDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value;
+    return sanitizeString(value);
+  })
+  @Matches(/^[A-Za-z0-9_\-.@]+$/, {
+    message: 'Wallet address must only contain alphanumeric characters and _-.@',
+  })
+  address: string;
+}
+
+--- src/user/dto/update-user.dto.ts ---
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsOptional,
+  IsObject,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { sanitizeString, sanitizeObject } from '../../common/utils/sanitization.util';
+
+/**
+ * Allowed profile data shape – restricts keys to known safe fields
+ * and prevents arbitrary nested objects.
+ */
+export class ProfileDataDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  bio?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  avatarUrl?: string;
+}
+
+export class UpdateUserDto {
+  @ApiPropertyOptional({ description: 'User email address' })
+  @IsEmail()
+  @IsOptional()
+  @MaxLength(254)
+  @Transform(({ value }) => (typeof value === 'string' ? sanitizeString(value) : value))
+  email?: string;
+
+  @ApiPropertyOptional({
+    description: 'User profile data (displayName, bio, avatarUrl)',
+    type: Object,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProfileDataDto)
+  profileData?: ProfileDataDto;
+
+  @ApiPropertyOptional({ description: 'Encrypted push subscription payload' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(5000)
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return value;
+    return sanitizeString(value);
+  })
+  pushSubscription?: string;
+}
+
+--- src/notification/dto/create-notification.dto.ts ---
+import { IsString, IsEnum, IsOptional, IsObject } from 'class-validator';
+import { Prisma } from '@prisma/client';
+import { NotificationType } from '../enums/notification-type.enum';
+
+export class CreateNotificationDto {
+  @IsString()
+  userId!: string;
+
+  @IsEnum(NotificationType)
+  type!: NotificationType;
+
+  @IsString()
+  title!: string;
+
+  @IsString()
+  message!: string;
+
+  @IsOptional()
+  @IsObject()
+  data?: Prisma.InputJsonObject;
+}
+
+--- src/notification/dto/push-subscription.dto.ts ---
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsObject, IsOptional, ValidateNested, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class PushSubscriptionKeysDto {
+  @ApiProperty({ description: 'Base64-encoded P-256 DH public key' })
+  @IsString()
+  @IsNotEmpty()
+  p256dh: string;
+
+  @ApiProperty({ description: 'Base64-encoded auth secret' })
+  @IsString()
+  @IsNotEmpty()
+  auth: string;
+}
+
+export class PushSubscriptionDto {
+  @ApiProperty({ description: 'Push service endpoint URL' })
+  @IsString()
+  @IsNotEmpty()
+  endpoint: string;
+
+  @ApiProperty({ description: 'Encryption keys for the push subscription', type: PushSubscriptionKeysDto })
+  @IsObject()
+  @ValidateNested()
+  @Type(() => PushSubscriptionKeysDto)
+  keys: PushSubscriptionKeysDto;
+
+  @ApiPropertyOptional({ description: 'Optional expiration timestamp for the subscription' })
+  @IsOptional()
+  @IsString()
+  expirationTime?: string;
+}
+
+--- src/notification/dto/update-notification-settings.dto.ts ---
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsOptional } from 'class-validator';
+
+export class UpdateNotificationSettingsDto {
+  @ApiPropertyOptional({ description: 'Enable email notifications' })
+  @IsOptional()
+  @IsBoolean()
+  emailEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Enable push notifications' })
+  @IsOptional()
+  @IsBoolean()
+  pushEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Notify on new contributions' })
+  @IsOptional()
+  @IsBoolean()
+  notifyContributions?: boolean;
+
+  @ApiPropertyOptional({ description: 'Notify on milestone changes' })
+  @IsOptional()
+  @IsBoolean()
+  notifyMilestones?: boolean;
+
+  @ApiPropertyOptional({ description: 'Notify on approaching deadlines' })
+  @IsOptional()
+  @IsBoolean()
+  notifyDeadlines?: boolean;
+}
+
+--- src/storage/dto/pin-metadata.dto.ts ---
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsObject, IsOptional, IsString } from 'class-validator';
+
+export class PinMetadataDto {
+  @ApiProperty({ description: 'Arbitrary metadata to pin', type: Object })
+  @IsObject()
+  metadata!: Record<string, any>;
+
+  @ApiPropertyOptional({ description: 'Optional friendly name for the metadata' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+}
+
+--- src/storage/dto/optimize-image.dto.ts ---
+import { ApiProperty } from '@nestjs/swagger';
+import { IsInt, IsPositive, IsString, Min, Max } from 'class-validator';
+
+export class OptimizeImageDto {
+  @ApiProperty({ description: 'Path to an existing image file' })
+  @IsString()
+  imagePath!: string;
+
+  @ApiProperty({ description: 'Target width in pixels', minimum: 1, maximum: 8192 })
+  @IsInt()
+  @IsPositive()
+  @Min(1)
+  @Max(8192)
+  width!: number;
+
+  @ApiProperty({ description: 'Target height in pixels', minimum: 1, maximum: 8192 })
+  @IsInt()
+  @IsPositive()
+  @Min(1)
+  @Max(8192)
+  height!: number;
+}
+
+--- src/storage/dto/presign-url.dto.ts ---
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNumber, IsOptional, Min, Max } from 'class-validator';
+
+export class PresignUrlDto {
+  @ApiProperty({ description: 'S3 object key to generate a presigned URL for' })
+  @IsString()
+  key!: string;
+
+  @ApiPropertyOptional({
+    description: 'URL expiration time in seconds (default 3600, max 604800)',
+    default: 3600,
+    minimum: 60,
+    maximum: 604800,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(60)
+  @Max(604800)
+  expiresIn?: number;
+}
+
+--- src/storage/dto/verify-hash.dto.ts ---
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
+
+export class VerifyHashDto {
+  @ApiProperty({ description: 'Alphanumeric hash value to verify', minLength: 1, maxLength: 128, example: 'Qm4f5G3f3u' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(128)
+  @Matches(/^[a-zA-Z0-9]+$/, {
+    message: 'Hash must be alphanumeric',
+  })
+  hash!: string;
+}
+
+--- src/insurance/dto/purchase-policy.dto.ts ---
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { Prisma } from '@prisma/client';
+import { RiskType } from '../enums/risk-type.enum';
+
+export class PurchasePolicyDto {
+  @ApiProperty({ description: 'ID of the purchasing user' })
+  @IsString()
+  userId: string;
+
+  @ApiProperty({ description: 'Insurance pool ID' })
+  @IsString()
+  poolId: string;
+
+  @ApiProperty({ description: 'Risk type for the insurance policy', enum: RiskType })
+  @IsEnum(RiskType)
+  riskType: RiskType;
+
+  @ApiProperty({ description: 'Requested coverage amount', minimum: 0.01 })
+  @Transform(({ value }) => {
+    const decimal = new Prisma.Decimal(value);
+    if (decimal.lte(new Prisma.Decimal(0))) {
+      throw new Error('Coverage amount must be positive');
+    }
+    return decimal;
+  })
+  coverageAmount: Prisma.Decimal;
+}
+
+--- src/insurance/dto/create-reinsurance.dto.ts ---
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { Prisma } from '@prisma/client';
+
+export class CreateReinsuranceDto {
+  @ApiProperty({ description: 'Insurance pool ID' })
+  @IsString()
+  poolId: string;
+
+  @ApiProperty({ description: 'Coverage limit for the contract' })
+  @Transform(({ value }) => {
+    const decimal = new Prisma.Decimal(value);
+    if (decimal.lte(new Prisma.Decimal(0))) {
+      throw new Error('Coverage limit must be positive');
+    }
+    return decimal;
+  })
+  coverageLimit: Prisma.Decimal;
+
+  @ApiProperty({ description: 'Premium rate expressed as a decimal between 0 and 1', minimum: 0, maximum: 1 })
+  @Transform(({ value }) => {
+    const decimal = new Prisma.Decimal(value);
+    if (decimal.lt(new Prisma.Decimal(0)) || decimal.gt(new Prisma.Decimal(1))) {
+      throw new Error('Premium rate must be between 0 and 1');
+    }
+    return decimal;
+  })
+  premiumRate: Prisma.Decimal;
+}
+
+--- src/insurance/dto/create-claim.dto.ts ---
+import { IsString, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { Prisma } from '@prisma/client';
+
+export class CreateClaimDto {
+  @IsUUID()
+  policyId!: string;
+
+  @Transform(({ value }) => {
+    const decimal = new Prisma.Decimal(value);
+    if (decimal.lte(new Prisma.Decimal(0))) {
+      throw new Error('Claim amount must be positive');
+    }
+    return decimal;
+  })
+  claimAmount!: Prisma.Decimal;
+}
+
+

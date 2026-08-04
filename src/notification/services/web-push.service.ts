@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Process, Processor } from '@nestjs/bull';
 import * as webpush from 'web-push';
 import { Job } from 'bull';
+import { randomUUID } from 'crypto';
 import { QUEUE_NAMES, PushJobData } from '../constants/queue.constants';
 import { ConfigService } from '@nestjs/config';
+import { runWithTracingContext } from '../../common/tracing/tracing-context';
 
 export interface WebPushPayload {
   title: string;
@@ -47,6 +49,13 @@ export class WebPushService {
    */
   @Process()
   async handlePushJob(job: Job<PushJobData>): Promise<void> {
+    return runWithTracingContext(
+      { correlationId: job.data.correlationId ?? randomUUID() },
+      () => this.processPushJob(job),
+    );
+  }
+
+  private async processPushJob(job: Job<PushJobData>): Promise<void> {
     const { subscription, payload } = job.data;
 
     if (!this.publicKey) {

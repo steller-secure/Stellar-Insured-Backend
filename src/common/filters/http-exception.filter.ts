@@ -14,6 +14,7 @@ import {
   ErrorResponseDto,
   ValidationFieldError,
 } from '../dto/error-response.dto';
+import { getTracingContext } from '../tracing/tracing-context';
 
 type ErrorDetails = ValidationFieldError[] | Record<string, unknown> | null;
 
@@ -58,11 +59,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const { status, code, message, details } = this.extractErrorInfo(exception);
 
-    // Pull correlation ID injected by CorrelationIdMiddleware (if present).
+    // Pull correlation ID injected by CorrelationIdMiddleware (if present),
+    // falling back to the AsyncLocalStorage tracing scope so the response
+    // body still quotes a correlation ID even when request headers aren't
+    // populated (e.g. requests that bypass the header-setting middleware).
     const requestId =
       (request.headers['x-request-id'] as string) ||
       (request.headers['x-correlation-id'] as string) ||
-      undefined;
+      getTracingContext()?.correlationId;
 
     const body: ErrorResponseDto = {
       success: false,

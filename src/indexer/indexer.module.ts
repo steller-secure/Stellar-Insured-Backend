@@ -8,43 +8,48 @@ import { XdrDecoderService } from './services/xdr-decoder.service';
 import { DatabaseModule } from '../database.module';
 import { SoftDeleteModule } from '../prisma.soft-delete.module';
 import { ReputationModule } from '../reputation/reputation.module';
+import { NotificationModule } from '../notification/notification.module';
 import stellarConfig, { indexerConfig } from '../config/stellar.config';
+import {
+  LedgerCursorRepository,
+  ProcessedEventRepository,
+  QuarantinedEventRepository,
+  IndexerLogRepository,
+} from '../common/repositories/indexer.repository';
+import {
+  UserRepository,
+  ProjectRepository,
+  ContributionRepository,
+  MilestoneRepository,
+} from '../common/repositories';
 
-/**
- * Blockchain Indexer Module
- *
- * This module provides background indexing of Stellar blockchain events
- * to synchronize on-chain state with the local database.
- */
 @Module({
   imports: [
-    // Enable scheduled tasks
     ScheduleModule.forRoot(),
-    // Database access
     DatabaseModule,
-    // Audited hard-delete utilities (re-org rollback purges)
     SoftDeleteModule,
-    // Reputation scoring
     ReputationModule,
-    // Configuration
+    NotificationModule,
     ConfigModule.forFeature(stellarConfig),
     ConfigModule.forFeature(indexerConfig),
   ],
   providers: [
-    // Core indexer service
+    // Indexer-specific repositories
+    LedgerCursorRepository,
+    ProcessedEventRepository,
+    QuarantinedEventRepository,
+    IndexerLogRepository,
+    // Shared entity repositories used by event handlers
+    UserRepository,
+    ProjectRepository,
+    ContributionRepository,
+    MilestoneRepository,
+    // Services
     IndexerService,
-    // Ledger state tracking
     LedgerTrackerService,
-    // Event processing
     EventHandlerService,
-    // Soroban XDR event decoder
     XdrDecoderService,
   ],
-  exports: [
-    // Export services for potential external use
-    IndexerService,
-    LedgerTrackerService,
-    EventHandlerService,
-  ],
+  exports: [IndexerService, LedgerTrackerService, EventHandlerService],
 })
 export class IndexerModule {}

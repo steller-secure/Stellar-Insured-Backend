@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { rpc as SorobanRpc } from 'stellar-sdk';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma.service';
 import { LedgerTrackerService } from './ledger-tracker.service';
 import { EventHandlerService } from './event-handler.service';
@@ -17,6 +18,8 @@ import {
   ContractEventType,
 } from '../types/event-types';
 import { LedgerInfo } from '../types/ledger.types';
+import { QuarantinedEventRepository } from '../../common/repositories/indexer.repository';
+import { runWithTracingContext } from '../../common/tracing/tracing-context';
 
 /**
  * Main indexer service that polls Stellar RPC for contract events
@@ -38,7 +41,7 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly quarantinedEventRepository: QuarantinedEventRepository,
     private readonly ledgerTracker: LedgerTrackerService,
     private readonly eventHandler: EventHandlerService,
     private readonly xdrDecoder: XdrDecoderService,
@@ -429,9 +432,21 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Process a single event
+   * Process a single event. Each on-chain event is its own unit of work with
+   * no parent HTTP request, so it gets a fresh correlation ID here — the
+   * indexer-equivalent of what CorrelationIdMiddleware does for a request.
+   * `eventId` is the ledger event's own ID, letting a single trace ID pull
+   * up every log line (and, via handlers, every notification/reputation
+   * side effect) this one on-chain event produced.
    */
   private async processEvent(event: SorobanEvent): Promise<boolean> {
+    return runWithTracingContext(
+      { correlationId: randomUUID(), eventId: event.id },
+      () => this.processEventInternal(event),
+    );
+  }
+
+  private async processEventInternal(event: SorobanEvent): Promise<boolean> {
     // Check if already processed (idempotency)
     const isProcessed = await this.ledgerTracker.isEventProcessed(event.id);
     if (isProcessed) {
@@ -492,20 +507,16 @@ export class IndexerService implements OnModuleInit, OnModuleDestroy {
     const reason = (data._quarantineReason as string) || 'unknown';
     const rawXdr = (data.rawXdr as string) || event.value;
 
-    await this.prisma.quarantinedEvent
-      .upsert({
-        where: { eventId: event.id },
-        update: {},
-        create: {
-          eventId: event.id,
-          network: this.network,
-          contractId: event.contractId,
-          eventType: parsedEvent.eventType,
-          ledgerSeq: event.ledger,
-          transactionHash: event.txHash,
-          rawXdr,
-          reason,
-        },
+    await this.quarantinedEventRepository
+      .upsertEvent({
+        eventId: event.id,
+        network: this.network,
+        contractId: event.contractId,
+        eventType: parsedEvent.eventType,
+        ledgerSeq: event.ledger,
+        transactionHash: event.txHash,
+        rawXdr,
+        reason,
       })
       .catch(err => {
         this.logger.error(

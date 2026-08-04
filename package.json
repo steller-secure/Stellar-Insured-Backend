@@ -7,6 +7,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:prod": "nest build",
+    "check": "npm run lint && npm run test -- --runInBand",
+    "audit": "npm audit --audit-level=moderate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start -b tsc --watch",

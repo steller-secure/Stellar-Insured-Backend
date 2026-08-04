@@ -12,7 +12,7 @@ describe('EncryptionService', () => {
   beforeEach(() => {
     configService = {
       get: jest.fn((key: string) => {
-        if (key === 'ENCRYPTION_KEYS') {
+        if (key === 'app.encryptionKeys') {
           return `v1:${testKeyBase64},v2:${testKeyV2Base64}`;
         }
         return null;

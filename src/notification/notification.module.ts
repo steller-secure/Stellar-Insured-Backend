@@ -9,11 +9,27 @@ import { NotificationEventListener } from '../common/events/listeners/notificati
 import { DatabaseModule } from '../database.module';
 import { UserModule } from '../user/user.module';
 import { QueueModule } from '../queue.module';
+import {
+  NotificationRepository,
+  NotificationSettingRepository,
+  EmailOutboxRepository,
+} from '../common/repositories/notification.repository';
+import {
+  ProjectRepository,
+  ContributionRepository,
+} from '../common/repositories/project.repository';
 
 @Module({
   imports: [DatabaseModule, UserModule, QueueModule],
   controllers: [NotificationController],
   providers: [
+    // Repositories
+    NotificationRepository,
+    NotificationSettingRepository,
+    EmailOutboxRepository,
+    ProjectRepository,
+    ContributionRepository,
+    // Services
     NotificationService,
     EmailService,
     WebPushService,
@@ -21,6 +37,11 @@ import { QueueModule } from '../queue.module';
     EmailRetryTask,
     NotificationEventListener,
   ],
-  exports: [NotificationService],
+  exports: [
+    NotificationService,
+    NotificationRepository,
+    NotificationSettingRepository,
+    EmailOutboxRepository,
+  ],
 })
 export class NotificationModule {}

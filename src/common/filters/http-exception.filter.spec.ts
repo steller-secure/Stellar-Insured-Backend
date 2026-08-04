@@ -3,6 +3,7 @@ import { ThrottlerException } from '@nestjs/throttler';
 import { Prisma } from '@prisma/client';
 import { AllExceptionsFilter } from './http-exception.filter';
 import { ErrorCode } from '../enums/error-codes.enum';
+import { runWithTracingContext } from '../tracing/tracing-context';
 
 interface MockResponse {
   status: jest.Mock<MockResponse, [number]>;
@@ -16,13 +17,14 @@ function createPrismaError(code: string): Prisma.PrismaClientKnownRequestError {
   });
 }
 
-function createArgumentsHost(response: MockResponse): ArgumentsHost {
+function createArgumentsHost(
+  response: MockResponse,
+  headers: Record<string, string> = { 'x-request-id': 'req-1' },
+): ArgumentsHost {
   const request = {
     method: 'POST',
     url: '/policies',
-    headers: {
-      'x-request-id': 'req-1',
-    },
+    headers,
   };
 
   const host = {
@@ -104,6 +106,40 @@ describe('AllExceptionsFilter', () => {
         error: expect.objectContaining({
           code: ErrorCode.INTERNAL_SERVER_ERROR,
           message: 'A database error occurred.',
+        }),
+      }),
+    );
+  });
+
+  it('falls back to the tracing context correlation ID when no request-id headers are present', () => {
+    runWithTracingContext({ correlationId: 'scope-correlation-id' }, () => {
+      filter.catch(
+        createPrismaError('P2025'),
+        createArgumentsHost(response, {}),
+      );
+    });
+
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          requestId: 'scope-correlation-id',
+        }),
+      }),
+    );
+  });
+
+  it('prefers request headers over the tracing context when both are present', () => {
+    runWithTracingContext({ correlationId: 'scope-correlation-id' }, () => {
+      filter.catch(
+        createPrismaError('P2025'),
+        createArgumentsHost(response, { 'x-request-id': 'header-id' }),
+      );
+    });
+
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          requestId: 'header-id',
         }),
       }),
     );

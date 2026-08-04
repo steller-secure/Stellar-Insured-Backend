@@ -226,6 +226,7 @@ model AuditLog {
   userAgent       String?     @map("user_agent")
   transactionHash String?     @map("transaction_hash")
   reason          String?
+  correlationId   String?     @map("correlation_id")
   timestamp       DateTime    @default(now())
   createdAt       DateTime    @default(now()) @map("created_at")
   deletedAt       DateTime?   @map("deleted_at")
@@ -234,6 +235,7 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([timestamp])
   @@index([deletedAt])
+  @@index([correlationId])
   @@map("audit_logs")
 }
 

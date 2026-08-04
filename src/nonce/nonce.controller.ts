@@ -1,4 +1,4 @@
-import { Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, HttpCode, HttpStatus, Version } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCreatedResponse } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { NonceService } from './nonce.service';
@@ -28,6 +28,7 @@ export class NonceController {
    * Rate-limited by the named `auth` throttler (THROTTLE_AUTH_*).
    */
   @Public()
+  @Version('1')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Issue a one-time authentication nonce' })

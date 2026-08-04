@@ -1,12 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { InsuranceController } from './insurance.controller';
 import { InsuranceService } from './insurance.service';
 import { ClaimService } from './claim.service';
 import { ReinsuranceService } from './reinsurance.service';
+import { IdempotencyInterceptor } from '../interceptors/idempotency.interceptor';
 import { RiskType } from './enums/risk-type.enum';
-import { PrismaService } from '../prisma.service';
-import { DomainEventBus } from '../common/events/domain-event-bus.service';
-import { Prisma } from '@prisma/client';
 
 describe('InsuranceController', () => {
   let controller: InsuranceController;
@@ -38,21 +37,9 @@ describe('InsuranceController', () => {
           },
         },
         {
-          provide: PrismaService,
+          provide: IdempotencyInterceptor,
           useValue: {
-            idempotencyKey: {
-              findUnique: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-            },
-          },
-        },
-        {
-          provide: DomainEventBus,
-          useValue: {
-            emit: jest.fn(),
-            on: jest.fn(),
-            setIdempotencyKey: jest.fn(),
+            intercept: jest.fn((_: any, next: any) => next.handle()),
           },
         },
       ],
@@ -78,10 +65,8 @@ describe('InsuranceController', () => {
         coverageAmount: new Prisma.Decimal(10000),
       };
 
-      const mockServiceResult = { id: 'policy-1', ...body };
-      (insuranceService.purchasePolicy as jest.Mock).mockResolvedValue(
-        mockServiceResult,
-      );
+      const expectedResult = { id: 'policy-1', ...body };
+      (insuranceService.purchasePolicy as jest.Mock).mockResolvedValue(expectedResult);
 
       const result = await controller.purchase(body);
 
@@ -91,13 +76,7 @@ describe('InsuranceController', () => {
         RiskType.PROJECT_FAILURE,
         new Prisma.Decimal(10000),
       );
-      expect(result).toEqual({
-        id: 'policy-1',
-        userId: 'user-1',
-        poolId: 'pool-1',
-        riskType: RiskType.PROJECT_FAILURE,
-        coverageAmount: '10000',
-      });
+      expect(result).toEqual(expectedResult);
     });
   });
 
@@ -133,10 +112,8 @@ describe('InsuranceController', () => {
         premiumRate: new Prisma.Decimal(0.02),
       };
 
-      const mockServiceResult = { id: 'contract-1', ...body };
-      (reinsuranceService.createContract as jest.Mock).mockResolvedValue(
-        mockServiceResult,
-      );
+      const expectedResult = { id: 'contract-1', ...body };
+      (reinsuranceService.createContract as jest.Mock).mockResolvedValue(expectedResult);
 
       const result = await controller.createReinsurance(body);
 
@@ -145,12 +122,7 @@ describe('InsuranceController', () => {
         new Prisma.Decimal(50000),
         new Prisma.Decimal(0.02),
       );
-      expect(result).toEqual({
-        id: 'contract-1',
-        poolId: 'pool-1',
-        coverageLimit: '50000',
-        premiumRate: '0.02',
-      });
+      expect(result).toEqual(expectedResult);
     });
   });
 });

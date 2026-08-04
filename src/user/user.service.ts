@@ -4,7 +4,7 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
+import { Prisma, User } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { EncryptionService } from '../encryption/encryption.service';
 import {
@@ -14,9 +14,9 @@ import {
   isValidWalletAddress,
 } from '../common/utils/sanitization.util';
 import { REPUTATION_DELTAS } from '../reputation/reputation.constants';
-import { DomainEventBus } from '../common/events/domain-event-bus.service';
-import { DomainEventName } from '../common/events/event-types';
-import { Prisma, User } from '@prisma/client';
+import { AuditService } from '../insurance/services/audit.service';
+import { AuditAction } from '../insurance/enums/audit-action.enum';
+import { UserRepository } from '../common/repositories/user.repository';
 
 export interface PaginatedUsers {
   data: User[];
@@ -31,22 +31,16 @@ export interface PaginatedUsers {
 @Injectable()
 export class UserService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly userRepository: UserRepository,
     private readonly encryption: EncryptionService,
-    private readonly eventBus: DomainEventBus,
+    private readonly auditService: AuditService,
   ) {}
 
   async findById(id: string): Promise<User> {
     if (!isValidCuid(id)) {
       throw new BadRequestException('Invalid user ID format');
     }
-
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-      },
-    });
+    const user = await this.userRepository.findByIdActive(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
@@ -57,19 +51,10 @@ export class UserService {
     if (!isValidWalletAddress(walletAddress)) {
       throw new BadRequestException('Invalid wallet address format');
     }
-
     const sanitizedAddress = sanitizeString(walletAddress);
-
-    const user = await this.prisma.user.findFirst({
-      where: {
-        walletAddress: sanitizedAddress,
-        deletedAt: null,
-      },
-    });
+    const user = await this.userRepository.findByWallet(sanitizedAddress);
     if (!user) {
-      throw new NotFoundException(
-        `User with wallet address ${sanitizedAddress} not found`,
-      );
+      throw new NotFoundException(`User with wallet address ${sanitizedAddress} not found`);
     }
     return this.decryptUser(user);
   }
@@ -79,14 +64,8 @@ export class UserService {
     const offset = Math.max(page - 1, 0) * safeLimit;
 
     const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
-        where: { deletedAt: null },
-        skip: offset,
-        take: safeLimit,
-      }),
-      this.prisma.user.count({
-        where: { deletedAt: null },
-      }),
+      this.userRepository.findPaginated(offset, safeLimit),
+      this.userRepository.countActive(),
     ]);
 
     return {
@@ -104,43 +83,44 @@ export class UserService {
     if (!isValidWalletAddress(walletAddress)) {
       throw new BadRequestException('Invalid wallet address format');
     }
-
     const sanitizedAddress = sanitizeString(walletAddress);
-
-    const existingUser = await this.prisma.user.findUnique({
-      where: { walletAddress: sanitizedAddress },
-    });
-
+    const existingUser = await this.userRepository.findByWalletUnique(sanitizedAddress);
     if (existingUser) {
-      throw new ConflictException(
-        'User with this wallet address already exists',
-      );
+      throw new ConflictException('User with this wallet address already exists');
     }
 
     const sanitizedEmail = email ? sanitizeString(email) : null;
-    const encryptedEmail = sanitizedEmail
-      ? this.encryption.encrypt(sanitizedEmail)
-      : null;
+    const encryptedEmail = sanitizedEmail ? this.encryption.encrypt(sanitizedEmail) : null;
 
-    const user = await this.prisma.$transaction(async tx => {
-      return tx.user.create({
-        data: {
+    return this.userRepository.transaction(async tx => {
+      return this.userRepository.createWithSettings(
+        {
           walletAddress: sanitizedAddress,
           email: encryptedEmail,
           reputationScore: REPUTATION_DELTAS.INITIAL_REPUTATION,
-          notificationSettings: {
-            create: {},
-          },
+          notificationSettings: { create: {} },
         },
-        include: { notificationSettings: true },
-      });
+        tx,
+      );
     });
-    return user;
   }
 
   async update(id: string, updateData: UpdateUserDto): Promise<User> {
     if (!isValidCuid(id)) {
       throw new BadRequestException('Invalid user ID format');
+    }
+    await this.findById(id);
+
+    const data: Prisma.UserUpdateInput = {};
+
+    if (updateData.email !== undefined) {
+      data.email = this.encryption.encrypt(sanitizeString(updateData.email));
+    }
+    if (updateData.profileData !== undefined) {
+      data.profileData = this.toJsonInput(sanitizeObject(updateData.profileData));
+    }
+    if (updateData.pushSubscription !== undefined) {
+      data.pushSubscription = this.encryption.encrypt(sanitizeString(updateData.pushSubscription));
     }
 
     const beforeUser = await this.findById(id);
@@ -151,87 +131,35 @@ export class UserService {
       pushSubscription: beforeUser.pushSubscription,
     };
 
-    const data: Prisma.UserUpdateInput = {};
-
-    if (updateData.email !== undefined) {
-      data.email = this.encryption.encrypt(sanitizeString(updateData.email));
-    }
-
-    if (updateData.profileData !== undefined) {
-      data.profileData = this.toJsonInput(
-        sanitizeObject(updateData.profileData),
-      );
-    }
-
-    if (updateData.pushSubscription !== undefined) {
-      data.pushSubscription = this.encryption.encrypt(
-        sanitizeString(updateData.pushSubscription),
-      );
-    }
-
-    const updatedUser = await this.prisma.$transaction(async tx => {
-      return tx.user.update({
-        where: { id },
-        data,
-      });
+    const updatedUser = await this.userRepository.transaction(async tx => {
+      return this.userRepository.updateUser(id, data, tx);
     });
 
-    const afterSnapshot = {
+    const { beforeState, afterState } = this.auditService.snapshotDiff(beforeSnapshot, {
       id: updatedUser.id,
       email: updatedUser.email,
       profileData: updatedUser.profileData,
       pushSubscription: updatedUser.pushSubscription,
-    };
-
-    await this.eventBus.emit(DomainEventName.USER_UPDATED, {
-      userId: id,
-      beforeState: beforeSnapshot,
-      afterState: afterSnapshot,
-      reason: 'Profile updated',
     });
+    await this.auditService.log(AuditAction.UPDATE, 'User', id, beforeState, afterState, undefined, 'Profile updated');
 
     return updatedUser;
   }
 
   async delete(id: string): Promise<{ id: string; deletedAt: Date | null }> {
     await this.findById(id);
-
     const deletedAt = new Date();
-
-    const [deletedUser] = await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id },
-        data: { deletedAt },
-      }),
-      this.prisma.notification.updateMany({
-        where: { userId: id },
-        data: { deletedAt },
-      }),
-      this.prisma.notificationSetting.updateMany({
-        where: { userId: id },
-        data: { deletedAt },
-      }),
-      this.prisma.insurancePolicy.updateMany({
-        where: { userId: id },
-        data: { deletedAt },
-      }),
-      this.prisma.claim.updateMany({
-        where: { policy: { userId: id } },
-        data: { deletedAt },
-      }),
-    ]);
-
-    await this.eventBus.emit(DomainEventName.USER_DELETED, {
-      userId: id,
-      beforeState: { id, deletedAt: null },
-      afterState: { id, deletedAt: deletedUser.deletedAt },
-      reason: 'User soft-deleted',
-    });
-
-    return {
-      id: deletedUser.id,
-      deletedAt: deletedUser.deletedAt,
-    };
+    const deletedUser = await this.userRepository.cascadeSoftDelete(id, deletedAt);
+    await this.auditService.log(
+      AuditAction.DELETE,
+      'User',
+      id,
+      { id, deletedAt: null },
+      { id, deletedAt: deletedUser.deletedAt },
+      undefined,
+      'User soft-deleted',
+    );
+    return { id: deletedUser.id, deletedAt: deletedUser.deletedAt };
   }
 
   async getDecryptedContact(userId: string): Promise<{
@@ -248,47 +176,29 @@ export class UserService {
     if (!isValidCuid(userId)) {
       throw new BadRequestException('Invalid user ID format');
     }
-
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: userId,
-        deletedAt: null,
-      },
-      include: { notificationSettings: true },
-    });
-
+    const user = await this.userRepository.findWithSettings(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
-
     const decrypted = this.decryptUser(user);
     return {
       email: decrypted.email,
       pushSubscription: decrypted.pushSubscription,
-      notificationSettings: user.notificationSettings,
+      notificationSettings: user.notificationSettings ?? null,
     };
   }
 
   private decryptUser(user: User): User {
     const decrypted = { ...user };
-
     if (decrypted.email) {
-      try {
-        decrypted.email = this.encryption.decrypt(decrypted.email);
-      } catch {}
+      try { decrypted.email = this.encryption.decrypt(decrypted.email); } catch { /* keep encrypted */ }
     }
-
     if (decrypted.pushSubscription) {
       try {
-        const decryptedJson = this.encryption.decrypt(
-          decrypted.pushSubscription as string,
-        );
-        decrypted.pushSubscription = JSON.parse(
-          decryptedJson,
-        ) as Prisma.JsonValue;
-      } catch {}
+        const decryptedJson = this.encryption.decrypt(decrypted.pushSubscription as string);
+        decrypted.pushSubscription = JSON.parse(decryptedJson) as Prisma.JsonValue;
+      } catch { /* keep encrypted */ }
     }
-
     return decrypted;
   }
 

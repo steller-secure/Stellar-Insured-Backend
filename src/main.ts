@@ -5,10 +5,12 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { logger } from './config/winston.config';
+import { logger, nestWinstonLogger } from './config/winston.config';
 import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
 import { jsonReplacer } from './common/utils/json-replacer.util';
+import { redactFormat } from './common/utils/log-redaction.util';
+import { correlationIdHandler } from './middleware/correlation-id.middleware';
 
 async function bootstrap() {
   const bootstrapLogger = new Logger('Bootstrap');
@@ -16,7 +18,7 @@ async function bootstrap() {
   let configService: ConfigService;
   try {
     app = await NestFactory.create(AppModule, {
-      logger: logger,
+      logger: nestWinstonLogger,
     });
     configService = app.get(ConfigService);
   } catch (error) {
@@ -31,6 +33,11 @@ async function bootstrap() {
   // - create the Nest app with a shared Winston logger
   // - load config service for runtime configuration values
   // - apply middleware and global pipes before listening
+
+  // Correlation ID / tracing context — must be the very first middleware so
+  // that every subsequent middleware (including the request logger below)
+  // and every downstream handler runs inside the AsyncLocalStorage scope.
+  app.use(correlationIdHandler);
 
   // Cookie parser
   app.use(cookieParser());
@@ -74,11 +81,37 @@ async function bootstrap() {
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json(),
+        redactFormat(),
       ),
       meta: true,
-      msg: 'HTTP {{req.method}} {{req.url}}',
       expressFormat: true,
       colorize: false,
+      bodyBlacklist: [
+        'password',
+        'secret',
+        'token',
+        'authorization',
+        'cookie',
+        'email',
+        'pushSubscription',
+        'privateKey',
+        'encryptionKeys',
+        'vapidPrivateKey',
+        'apiKey',
+        'walletAddress',
+      ],
+      headerBlacklist: ['authorization', 'cookie', 'x-api-key', 'x-auth-token'],
+    }),
+  );
+
+  app.use(
+    expressWinston.errorLogger({
+      winstonInstance: logger,
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json(),
+        redactFormat(),
+      ),
     }),
   );
 

@@ -12,10 +12,25 @@ import { AuditService } from './services/audit.service';
 import { AuditEventListener } from '../common/events/listeners/audit-event.listener';
 import { IdempotencyInterceptor } from '../interceptors/idempotency.interceptor';
 
+import {
+  AuditLogRepository,
+  ClaimRepository,
+  InsurancePolicyRepository,
+  InsurancePoolRepository,
+  ReinsuranceContractRepository,
+} from '../common/repositories';
+
 @Module({
   imports: [DatabaseModule],
   controllers: [InsuranceController],
   providers: [
+    // Repositories
+    AuditLogRepository,
+    ClaimRepository,
+    InsurancePolicyRepository,
+    InsurancePoolRepository,
+    ReinsuranceContractRepository,
+    // Services
     InsuranceService,
     PoolService,
     ClaimService,
@@ -32,6 +47,11 @@ import { IdempotencyInterceptor } from '../interceptors/idempotency.interceptor'
     ReinsuranceService,
     PricingService,
     AuditService,
+    // Export repositories so other modules can use them (e.g. UserModule for cascades)
+    AuditLogRepository,
+    InsurancePolicyRepository,
+    InsurancePoolRepository,
+    ClaimRepository,
   ],
 })
 export class InsuranceModule {}
