@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { Observable, map, catchError } from 'rxjs';
 import { jsonReplacer } from '../utils/json-replacer.util';
-import { SerializationTransformer } from '../utils/serialization.util';
+import {
+  INTERNAL_ONLY_KEYS,
+  SerializationTransformer,
+} from '../utils/serialization.util';
 import {
   extractEntityIdFromParams,
   getTracingContext,
@@ -20,10 +23,8 @@ export interface SuccessResponse<T = unknown> {
   meta?: unknown;
 }
 
-interface RequestWithUser {
-  user?: { id?: string };
-  params?: Record<string, string>;
-}
+/** Maximum nesting the safe-serialization fallback will traverse. */
+const SAFE_SERIALIZE_MAX_DEPTH = 100;
 
 @Injectable()
 export class ResponseTransformInterceptor implements NestInterceptor {
@@ -103,14 +104,22 @@ export class ResponseTransformInterceptor implements NestInterceptor {
         const { data, meta } = body as any;
         return {
           success: true,
-          data: this.serializeSpecialTypes(this.stripSoftDeleteMetadata(data)),
-          meta,
+          data: this.serializeSpecialTypes(
+            SerializationTransformer.stripInternalFields(data),
+          ),
+          // `meta` is sanitized too: pagination metadata must not become a
+          // back-door for internal-only fields.
+          meta: this.serializeSpecialTypes(
+            SerializationTransformer.stripInternalFields(meta),
+          ),
         };
       }
 
       return {
         success: true,
-        data: this.serializeSpecialTypes(this.stripSoftDeleteMetadata(body)),
+        data: this.serializeSpecialTypes(
+          SerializationTransformer.stripInternalFields(body),
+        ),
       };
     } catch (error) {
       this.logger.error(
@@ -137,11 +146,20 @@ export class ResponseTransformInterceptor implements NestInterceptor {
   }
 
   /**
-   * Safe serialization fallback that handles errors gracefully
+   * Safe serialization fallback that handles errors gracefully. This is the
+   * last line of defense: it still drops internal-only keys (so the fallback
+   * path can never reintroduce what the primary path stripped) and is depth-
+   * bounded so circular payloads terminate instead of overflowing the stack.
    */
-  private safeSerialize(value: unknown): unknown {
+  private safeSerialize(value: unknown, depth = 0): unknown {
     if (value === null || value === undefined) {
       return value;
+    }
+
+    // Depth guard: circular references (or pathological nesting) terminate
+    // here rather than recursing forever.
+    if (depth > SAFE_SERIALIZE_MAX_DEPTH) {
+      return String(value);
     }
 
     // Use the jsonReplacer for individual values
@@ -151,7 +169,7 @@ export class ResponseTransformInterceptor implements NestInterceptor {
     }
 
     if (Array.isArray(value)) {
-      return value.map(item => this.safeSerialize(item));
+      return value.map(item => this.safeSerialize(item, depth + 1));
     }
 
     if (typeof value === 'object') {
@@ -160,46 +178,18 @@ export class ResponseTransformInterceptor implements NestInterceptor {
         for (const [key, entry] of Object.entries(
           value as Record<string, unknown>,
         )) {
-          result[key] = this.safeSerialize(entry);
+          if (INTERNAL_ONLY_KEYS.has(key)) {
+            continue;
+          }
+          result[key] = this.safeSerialize(entry, depth + 1);
         }
         return result;
-      } catch (error) {
+      } catch {
         // If object serialization fails, return string representation
         return String(value);
       }
     }
 
     return value;
-  }
-
-  /**
-   * Removes the internal `deletedAt` soft-delete marker from response
-   * payloads so it never leaks through the public API. Only plain objects
-   * and arrays are traversed; class instances (Date, Prisma.Decimal, ...)
-   * are returned untouched.
-   */
-  private stripSoftDeleteMetadata(value: unknown, depth = 0): unknown {
-    if (depth > 10 || value === null || typeof value !== 'object') {
-      return value;
-    }
-
-    if (Array.isArray(value)) {
-      return value.map(item => this.stripSoftDeleteMetadata(item, depth + 1));
-    }
-
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) {
-      return value;
-    }
-
-    const result: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(value)) {
-      if (key === 'deletedAt') {
-        continue;
-      }
-      result[key] = this.stripSoftDeleteMetadata(entry, depth + 1);
-    }
-
-    return result;
   }
 }

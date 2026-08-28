@@ -41,15 +41,61 @@ For the full lifecycle model, query conventions, repository patterns, restore
 vs. purge rules, and instructions for adding a new model, see
 **[SOFT_DELETE_GUIDE.md](SOFT_DELETE_GUIDE.md)**.
 
+## 📦 Response Serialization
+
+Every response passes through a global interceptor
+(`ResponseTransformInterceptor`) that enforces one public envelope:
+
+**Success** — `{ "success": true, "data": ..., "meta": ... }`
+
+**Error** — `{ "success": false, "error": { code, message, details, timestamp, path, requestId } }`
+
+### Fields removed from public responses
+
+The only field deliberately stripped from public responses is `deletedAt` —
+the soft-delete marker (see [Soft-Delete Policy](#soft-delete-policy)). It is
+removed from `data` **and** `meta`, at any nesting depth (nested objects,
+arrays, nested arrays), so no endpoint or nested payload structure can leak it.
+Stripping is non-mutating (the handler's payload is never modified) and
+cycle-safe: circular payloads terminate instead of crashing. Controllers that
+return an explicitly shaped `{ success: ... }` body keep it as-is — they own
+their own envelope contract.
+
+### Correlation / trace metadata
+
+- Every request receives a correlation ID (`x-correlation-id` header) —
+  inbound values are validated (RFC 4122 UUID) and replaced with a fresh
+  UUID if missing or malformed.
+- The header is returned on **both** successful and error responses, so
+  callers can quote it when reporting issues.
+- When a request targets a single entity (`:id`, `:claimId`, `:policyId`, …),
+  an `x-entity-id` header is added as well.
+- Error bodies include the same ID as `error.requestId`.
+- The correlation ID is also stamped onto every log line, audit record
+  (`audit_logs.correlation_id`), and notification payload emitted while the
+  request is in flight — see `src/common/tracing/tracing-context.ts`.
+
+### Internal metadata & admin behavior
+
+Serialization is uniform across all endpoints: there is no separate
+public/internal response path, and authorized admin flows are not given a
+"raw" response shape. Internal metadata (correlation IDs, tracing scope,
+audit trails) is preserved server-side for operational debugging and never
+included in public response bodies. Error responses never include stack
+traces or internal exception details — clients only ever receive the
+standardized `ErrorResponseDto`.
+
 ## 🏗️ Database Architecture
 
 **Prisma is the single source of truth** for all database access across this application:
+
 - All models (User, InsurancePolicy, Claim, InsurancePool, Project, Notification, etc.) are defined in `prisma/schema.prisma`
 - All services inject `PrismaService` from `DatabaseModule` for data access
 - All schema migrations use `prisma/migrations/` with Prisma CLI tools
 - Zero TypeORM or other ORM dependencies
 
 This decision ensures:
+
 - ✅ Consistent data access patterns across all domains
 - ✅ Unified schema management and migration strategy
 - ✅ Simplified onboarding and maintenance
@@ -93,6 +139,7 @@ This section documents all environment variables used by the backend. Variables 
 # Copy the example environment file
 cp .env.example .env
 
+Example environment variables:
 # Edit .env with your local configuration
 # Required variables must be set before starting the application
 ```
@@ -683,23 +730,31 @@ JWT_REFRESH_SECRET=<another_generated_secret>
 ---
 
 Running the Server
+
 # Install dependencies
+
 npm install
 
 # Development mode
+
 npm run start:dev
 
 # Production mode
+
 npm run start:prod
 
 🧪 Testing
+
 # Unit tests
+
 npm run test
 
 # End-to-end tests
+
 npm run test:e2e
 
 # Test coverage
+
 npm run test:cov
 
 🌐 API Documentation

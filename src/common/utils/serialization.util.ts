@@ -1,6 +1,17 @@
 import { isBigInt, isPrismaDecimal, isDate } from './type-guards.util';
 
 /**
+ * Keys that are internal-only and must never appear in a public API response.
+ *
+ * `deletedAt` is the soft-delete marker used across every model (see
+ * prisma/schema.prisma and SOFT_DELETE_GUIDE.md). It is meaningful to the
+ * platform (soft-delete lifecycle, audit, admin flows) but is not data an
+ * external consumer should rely on — responses deliberately omit it so it
+ * cannot leak through any endpoint, at any nesting depth.
+ */
+export const INTERNAL_ONLY_KEYS: ReadonlySet<string> = new Set(['deletedAt']);
+
+/**
  * Deep serialization utility for converting special types to JSON-safe values
  * Handles BigInt, Prisma.Decimal, and Date recursively through objects and arrays
  */
@@ -84,6 +95,72 @@ export class SerializationTransformer {
         result[field] = this.transform(obj[field]) as T[keyof T];
       }
     }
+    return result;
+  }
+
+  /**
+   * Deep-copies a plain-object/array payload, dropping every key listed in
+   * {@link INTERNAL_ONLY_KEYS} (currently the `deletedAt` soft-delete marker)
+   * at any nesting depth. This is the single sanitization pass applied to
+   * public responses by ResponseTransformInterceptor.
+   *
+   * Guarantees:
+   * - Non-mutating: the input graph is never modified; a fresh object/array
+   *   graph is returned.
+   * - Cycle-safe: `ancestors` tracks the current recursion path, so circular
+   *   references terminate (the cycle point resolves to `undefined`) instead
+   *   of recursing forever. Unlike a fixed depth cap, this also means deeply
+   *   nested payloads cannot smuggle internal-only keys past the filter.
+   * - Shared (non-circular) references are fully sanitized on every visit.
+   * - Class instances (Date, Prisma.Decimal, ...) are preserved by reference
+   *   so the transformer can convert them to JSON-safe values downstream.
+   */
+  static stripInternalFields(
+    value: unknown,
+    ancestors = new Set<object>(),
+  ): unknown {
+    if (value === null || typeof value !== 'object') {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      if (ancestors.has(value)) {
+        // Circular reference — resolve the cycle point so serialization
+        // terminates instead of overflowing the stack.
+        return undefined;
+      }
+      ancestors.add(value);
+      const result = value.map(item =>
+        this.stripInternalFields(item, ancestors),
+      );
+      ancestors.delete(value);
+      return result;
+    }
+
+    // Only traverse plain objects; class instances (Date, Prisma.Decimal,
+    // Buffer, ...) carry no internal-only keys of ours and are returned
+    // untouched for the special-type transformer to convert.
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      return value;
+    }
+
+    if (ancestors.has(value)) {
+      return undefined;
+    }
+    ancestors.add(value);
+
+    const result: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      if (INTERNAL_ONLY_KEYS.has(key)) {
+        continue;
+      }
+      result[key] = this.stripInternalFields(entry, ancestors);
+    }
+
+    ancestors.delete(value);
     return result;
   }
 }
