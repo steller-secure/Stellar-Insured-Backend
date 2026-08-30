@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { StorageService } from './storage.service';
 import { ConfigService } from '@nestjs/config';
 import { getQueueToken } from '@nestjs/bull';
-import { QUEUE_NAMES } from '../notification/constants/queue.constants';
+import { QUEUE_NAMES } from '../config/bull.config';
 import {
   InternalServerErrorException,
   ServiceUnavailableException,

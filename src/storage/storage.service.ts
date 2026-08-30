@@ -28,7 +28,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
   QUEUE_NAMES,
   IpfsPinJobData,
-} from '../notification/constants/queue.constants';
+} from '../config/bull.config';
 import {
   createCircuitBreaker,
   CircuitBreaker,
@@ -52,8 +52,7 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/zip',
 ]);
 
-const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-const DEFAULT_PRESIGN_EXPIRY = 3600; // 1 hour
+
 
 let sharp: typeof import('sharp') | undefined;
 try {
@@ -69,10 +68,11 @@ export class StorageService {
   private ipfsPromise?: Promise<IPFSHTTPClient>;
   private ipfsConfig: { host: string; port: number; protocol: string } | null =
     null;
-  private readonly ipfsInitTimeoutMs = 5000;
+  private readonly ipfsInitTimeoutMs: number;
   private readonly s3: S3Client;
   private readonly bucket: string;
   private readonly maxFileSize: number;
+  private readonly presignExpiry: number;
 
   /** Circuit breaker + retry for every AWS S3 operation. */
   private readonly s3Breaker: CircuitBreaker = createCircuitBreaker(
@@ -112,8 +112,9 @@ export class StorageService {
     const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
     const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY');
     this.bucket = this.config.get<string>('AWS_S3_BUCKET') || '';
-    this.maxFileSize =
-      this.config.get<number>('S3_MAX_FILE_SIZE') || DEFAULT_MAX_FILE_SIZE;
+    this.maxFileSize = this.config.get<number>('storage.limits.maxFileSize') || 10485760;
+    this.presignExpiry = this.config.get<number>('storage.limits.presignExpiry') || 3600;
+    this.ipfsInitTimeoutMs = this.config.get<number>('storage.timeouts.ipfsInit') || 5000;
 
     if (!region || !accessKeyId || !secretAccessKey || !this.bucket) {
       this.logger.error(
@@ -219,17 +220,18 @@ export class StorageService {
 
   async getPresignedUrl(
     key: string,
-    expiresIn: number = DEFAULT_PRESIGN_EXPIRY,
+    expiresIn?: number,
   ): Promise<string> {
+    const expiry = expiresIn ?? this.presignExpiry;
     try {
       const command = new PutObjectCommand({ Bucket: this.bucket, Key: key });
       const url = await withResilience(
         this.s3Breaker,
-        () => getSignedUrl(this.s3, command, { expiresIn }),
+        () => getSignedUrl(this.s3, command, { expiresIn: expiry }),
         { retry: AWS_S3_POLICY.retry },
       );
       this.logger.log(
-        `Generated presigned URL for key "${key}" (expires in ${expiresIn}s)`,
+        `Generated presigned URL for key "${key}" (expires in ${expiry}s)`,
       );
       return url;
     } catch (error) {

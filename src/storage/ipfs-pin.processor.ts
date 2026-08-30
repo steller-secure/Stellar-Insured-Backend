@@ -5,7 +5,7 @@ import { StorageService } from './storage.service';
 import {
   IpfsPinJobData,
   QUEUE_NAMES,
-} from '../notification/constants/queue.constants';
+} from '../config/bull.config';
 
 @Injectable()
 @Processor(QUEUE_NAMES.IPFS_PIN)
