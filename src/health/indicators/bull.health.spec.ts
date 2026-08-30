@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BullHealthIndicator } from './bull.health';
 import { getQueueToken } from '@nestjs/bull';
 import { HealthCheckError } from '@nestjs/terminus';
-import { QUEUE_NAMES } from '../../notification/constants/queue.constants';
+import { QUEUE_NAMES } from '../../config/bull.config';
 
 describe('BullHealthIndicator', () => {
   let indicator: BullHealthIndicator;

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/terminus';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { QUEUE_NAMES } from '../../notification/constants/queue.constants';
+import { QUEUE_NAMES } from '../../config/bull.config';
 
 /**
  * Bull queue health indicator.
