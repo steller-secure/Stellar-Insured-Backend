@@ -5,9 +5,8 @@ import { Job } from 'bull';
 import { EmailOutboxRepository } from '../../common/repositories/notification.repository';
 import {
   QUEUE_NAMES,
-  EMAIL_MAX_ATTEMPTS,
   EmailJobData,
-} from '../constants/queue.constants';
+} from '../../config/bull.config';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma.service';
 import { runWithTracingContext } from '../../common/tracing/tracing-context';
@@ -26,6 +25,7 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly apiKey: string;
   private readonly fromEmail: string;
+  private readonly maxAttempts: number;
 
   /**
    * Circuit breaker + retry for SendGrid. A degraded SendGrid trips the
@@ -46,6 +46,7 @@ export class EmailService {
     this.fromEmail =
       this.configService.get<string>('notification.sendgrid.fromEmail') ||
       'noreply@novafund.xyz';
+    this.maxAttempts = this.configService.get<number>('queue.retryLimits.email', 5);
     if (this.apiKey && typeof (sgMail as any).setApiKey === 'function') {
       (sgMail as any).setApiKey(this.apiKey);
     } else if (this.apiKey && sgMail && (sgMail as any).default && typeof (sgMail as any).default.setApiKey === 'function') {
@@ -97,7 +98,7 @@ export class EmailService {
       this.logger.error(`Failed to send email to ${to}: ${message}`);
 
       const attempts = job.attemptsMade + 1;
-      const isFinal = attempts >= EMAIL_MAX_ATTEMPTS;
+      const isFinal = attempts >= this.maxAttempts;
       await this.emailOutboxRepository.updateStatus(outboxId, {
         attempts,
         lastError: message,

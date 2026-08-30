@@ -12,7 +12,7 @@ import {
   QUEUE_NAMES,
   EmailJobData,
   PushJobData,
-} from '../constants/queue.constants';
+} from '../../config/bull.config';
 import {
   NotificationRepository,
   NotificationSettingRepository,

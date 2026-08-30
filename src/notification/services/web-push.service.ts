@@ -3,7 +3,7 @@ import { Process, Processor } from '@nestjs/bull';
 import * as webpush from 'web-push';
 import { Job } from 'bull';
 import { randomUUID } from 'crypto';
-import { QUEUE_NAMES, PushJobData } from '../constants/queue.constants';
+import { QUEUE_NAMES, PushJobData } from '../../config/bull.config';
 import { ConfigService } from '@nestjs/config';
 import { runWithTracingContext } from '../../common/tracing/tracing-context';
 import {

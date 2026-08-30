@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
-import { QUEUE_NAMES } from './notification/constants/queue.constants';
-import { bullConfig } from './config/bull.config';
+import { bullConfig, QUEUE_NAMES } from './config/bull.config';
 
 @Module({
   imports: [

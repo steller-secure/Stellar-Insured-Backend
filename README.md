@@ -133,6 +133,15 @@ Deployment: Docker, Cloud providers
 
 This section documents all environment variables used by the backend. Variables are grouped by service/component.
 
+### Unified Configuration Models
+
+The application relies on unified configuration models using NestJS `@nestjs/config` namespaces (`queue`, `storage`, `notification`, etc.). 
+- **Queue/Bull Configurations (`queue`)**: Configures Redis endpoints and dynamic retry limits (`EMAIL_QUEUE_MAX_ATTEMPTS`, `PUSH_QUEUE_MAX_ATTEMPTS`, `IPFS_PIN_QUEUE_MAX_ATTEMPTS`). Queue names are exposed safely as constants.
+- **Storage Configurations (`storage`)**: Manages S3 credentials alongside operational limits (`S3_MAX_FILE_SIZE`, `S3_PRESIGN_EXPIRY`) and timeouts (`IPFS_INIT_TIMEOUT_MS`).
+- **Notification Configurations (`notification`)**: Centralizes SendGrid keys and WebPush/VAPID keys.
+
+You can tune these environment-specific settings by declaring them in your `.env` file, overriding the defaults gracefully.
+
 ### Quick Start
 
 ```bash
@@ -231,11 +240,13 @@ Bull uses Redis for job queue management. Configure using the Redis variables ab
 |----------|----------|---------|-------------|
 | `EMAIL_QUEUE_MAX_ATTEMPTS` | No | `5` | Maximum retry attempts for email delivery jobs |
 | `PUSH_QUEUE_MAX_ATTEMPTS` | No | `5` | Maximum retry attempts for push notification jobs |
+| `IPFS_PIN_QUEUE_MAX_ATTEMPTS` | No | `5` | Maximum retry attempts for IPFS pin jobs |
 
 **Example:**
 ```bash
 EMAIL_QUEUE_MAX_ATTEMPTS=5
 PUSH_QUEUE_MAX_ATTEMPTS=5
+IPFS_PIN_QUEUE_MAX_ATTEMPTS=5
 ```
 
 **Used by:** Background job processing for email notifications, web push notifications, and IPFS pinning.
@@ -250,6 +261,8 @@ PUSH_QUEUE_MAX_ATTEMPTS=5
 | `AWS_ACCESS_KEY_ID` | ✅ Yes | - | AWS access key ID |
 | `AWS_SECRET_ACCESS_KEY` | ✅ Yes | - | AWS secret access key |
 | `AWS_S3_BUCKET` | ✅ Yes | - | S3 bucket name for file storage |
+| `S3_MAX_FILE_SIZE` | No | `10485760` | Maximum allowed file upload size (in bytes, default 10MB) |
+| `S3_PRESIGN_EXPIRY` | No | `3600` | Presigned URL expiration time (in seconds, default 1hr) |
 
 **Example:**
 ```bash
@@ -358,6 +371,7 @@ INDEXER_MAX_EVENTS_PER_FETCH=100
 | `IPFS_HOST` | No | `localhost` | IPFS node hostname |
 | `IPFS_PORT` | No | `5001` | IPFS API port |
 | `IPFS_PROTOCOL` | No | `http` | IPFS API protocol (`http` or `https`) |
+| `IPFS_INIT_TIMEOUT_MS` | No | `5000` | Timeout for IPFS client initialization |
 
 **Example:**
 ```bash

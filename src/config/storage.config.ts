@@ -12,6 +12,13 @@ export interface StorageConfig {
     secretAccessKey: string;
     s3Bucket: string;
   };
+  limits: {
+    maxFileSize: number;
+    presignExpiry: number;
+  };
+  timeouts: {
+    ipfsInit: number;
+  };
 }
 
 export default registerAs(
@@ -27,6 +34,13 @@ export default registerAs(
       accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
       s3Bucket: process.env.AWS_S3_BUCKET || '',
+    },
+    limits: {
+      maxFileSize: parseInt(process.env.S3_MAX_FILE_SIZE || '10485760', 10), // Default 10MB
+      presignExpiry: parseInt(process.env.S3_PRESIGN_EXPIRY || '3600', 10), // Default 1 hour
+    },
+    timeouts: {
+      ipfsInit: parseInt(process.env.IPFS_INIT_TIMEOUT_MS || '5000', 10), // Default 5 seconds
     },
   }),
 );

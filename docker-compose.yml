@@ -61,6 +61,12 @@ services:
       DATABASE_URL: postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_DATABASE:-stellar_insured}
       REDIS_URL: redis://redis:6379
       NODE_ENV: ${NODE_ENV:-development}
+      EMAIL_QUEUE_MAX_ATTEMPTS: ${EMAIL_QUEUE_MAX_ATTEMPTS:-5}
+      PUSH_QUEUE_MAX_ATTEMPTS: ${PUSH_QUEUE_MAX_ATTEMPTS:-5}
+      IPFS_PIN_QUEUE_MAX_ATTEMPTS: ${IPFS_PIN_QUEUE_MAX_ATTEMPTS:-5}
+      S3_MAX_FILE_SIZE: ${S3_MAX_FILE_SIZE:-10485760}
+      S3_PRESIGN_EXPIRY: ${S3_PRESIGN_EXPIRY:-3600}
+      IPFS_INIT_TIMEOUT_MS: ${IPFS_INIT_TIMEOUT_MS:-5000}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health/ready"]
       interval: 30s

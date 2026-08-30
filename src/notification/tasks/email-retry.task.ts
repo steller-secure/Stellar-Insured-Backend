@@ -2,22 +2,26 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { EmailOutboxRepository } from '../../common/repositories/notification.repository';
 import {
   QUEUE_NAMES,
-  EMAIL_MAX_ATTEMPTS,
   EmailJobData,
-} from '../constants/queue.constants';
+} from '../../config/bull.config';
 
 @Injectable()
 export class EmailRetryTask {
   private readonly logger = new Logger(EmailRetryTask.name);
+  private readonly maxAttempts: number;
 
   constructor(
     private readonly emailOutboxRepository: EmailOutboxRepository,
     @InjectQueue(QUEUE_NAMES.EMAIL)
     private readonly emailQueue: Queue<EmailJobData>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.maxAttempts = this.configService.get<number>('queue.retryLimits.email', 5);
+  }
 
   /**
    * Sweep the durable outbox for rows that are still PENDING (or previously
@@ -29,12 +33,12 @@ export class EmailRetryTask {
 
     const pending = await this.emailOutboxRepository.findPendingBatch(
       50,
-      EMAIL_MAX_ATTEMPTS,
+      this.maxAttempts,
     );
 
     for (const email of pending) {
       this.logger.log(
-        `Re-enqueuing email to ${email.to} (attempt ${email.attempts + 1}/${EMAIL_MAX_ATTEMPTS})`,
+        `Re-enqueuing email to ${email.to} (attempt ${email.attempts + 1}/${this.maxAttempts})`,
       );
       await this.emailQueue.add(
         {
@@ -44,7 +48,7 @@ export class EmailRetryTask {
           html: email.html,
         },
         {
-          attempts: EMAIL_MAX_ATTEMPTS - email.attempts,
+          attempts: this.maxAttempts - email.attempts,
           backoff: { type: 'exponential', delay: 5000 },
           removeOnComplete: true,
           removeOnFail: false,
